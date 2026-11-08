@@ -484,7 +484,7 @@ function Results({ student }: { student: PublicStudent }) {
     const now = data.scores as Record<string, number>;
     const prev = lastScores.current;
     if (prev && prev.round === data.round) {
-      const up = Object.keys(now).filter((k) => prev.scores[k] !== undefined && now[k] > prev.scores[k]!);
+      const up = Object.keys(now).filter((k) => prev.scores[k] !== undefined && (now[k] ?? 0) > (prev.scores[k] ?? 0));
       if (up.length) { setRaised(up); setTimeout(() => setRaised([]), 15000); }
     }
     lastScores.current = { round: data.round, scores: now };
