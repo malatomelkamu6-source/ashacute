@@ -433,7 +433,7 @@ export const studentResults = createServerFn({ method: "POST" })
     const rounds = [...new Set([s.current_round, ...(all ?? []).map((r) => r.round)])].sort((a, b) => a - b);
     const round = data.round ?? rounds[rounds.length - 1] ?? s.current_round;
     const scores = Object.fromEntries((all ?? []).filter((r) => r.round === round).map((r) => [r.subject, r.score_pct]));
-    return { published: true as const, locked: null, rounds, round, subjects: subjectsFor(st.stream, s.sat_enabled), scores };
+    return { published: true as const, locked: null, rounds, round, subjects: subjectsFor(st.stream, s.sat_enabled || "SAT" in scores), scores };
   });
 
 export const directorRemove = createServerFn({ method: "POST" })
