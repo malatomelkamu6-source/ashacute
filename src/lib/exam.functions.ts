@@ -287,6 +287,23 @@ export const teacherSaveBank = createServerFn({ method: "POST" })
     return { id: res.data.id };
   });
 
+const PAPER_MIMES = ["application/pdf", "image/png", "image/jpeg", "image/webp", "text/plain"] as const;
+export const teacherScanPaper = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({
+    passcode: pass, teacherId: z.string().max(30),
+    fileName: z.string().trim().min(1).max(200),
+    mime: z.enum(PAPER_MIMES),
+    base64: z.string().min(1).max(20_000_000).optional(),
+    text: z.string().trim().min(1).max(300_000).optional(),
+  }).refine((d) => !!d.base64 !== !!d.text, "Send the file or its text.").parse(d))
+  .handler(async ({ data }) => {
+    await teacher(data.passcode, data.teacherId);
+    const { scanPaper } = await import("@/lib/paper.server");
+    const questions = await scanPaper(data);
+    if (!questions.length) throw new Error("No multiple-choice questions were found in this paper. Check that each question has its choices (A, B, C, D).");
+    return { questions };
+  });
+
 /* ---------------- Student exam ---------------- */
 async function student(who: { name: string; id: string; token: string }) {
   const sb = await admin();
