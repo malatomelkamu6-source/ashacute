@@ -291,7 +291,7 @@ function ConnectionLost({ attempts, nameOf, live, onResume }: { attempts: ConnAt
   const left = (a: ConnAttempt) => a.deadline_at && a.paused_at ? Math.max(0, Math.round((Date.parse(a.deadline_at) - Date.parse(a.paused_at)) / 1000)) : 0;
   const back = lost.filter((a) => backOnline(a.last_seen_at, a.paused_at));
   return <Panel className="mt-4" title={`Connection or power problems · ${lost.length}`} icon={<WifiOff className="h-4 w-4" />} action={back.length > 1 ? <Btn variant="accent" className="py-1 text-xs" onClick={() => onResume(back.map((a) => a.id))}><Play className="h-3.5 w-3.5" />Resume all back online ({back.length})</Btn> : undefined}>
-    <p className="mb-3 text-xs text-muted-foreground">When a student's device stops responding for a minute (power cut or no internet), their exam is not submitted. Their answers, the question they were on and their time left are saved and the timer stops. You decide when they continue.</p>
+    <p className="mb-3 text-xs text-muted-foreground">The moment a student's device loses power or internet, their exam is frozen — it is not submitted. Their answers, the question they were on and their time left are saved and the timer stops. You decide when they continue.</p>
     {!lost.length ? <p className="text-sm text-muted-foreground">Everyone is connected.</p> : <ul className="space-y-2 text-sm">
       {lost.map((a) => { const on = backOnline(a.last_seen_at, a.paused_at); return <li key={a.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 p-2">
         <span className="min-w-0 flex-1 break-words">{nameOf(a.student_code)} <span className="font-mono text-xs text-muted-foreground">{a.student_code}</span></span>
