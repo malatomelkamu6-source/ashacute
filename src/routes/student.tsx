@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Lock, Maximize, Flag, ChevronLeft, ChevronRight, AlertTriangle, Trophy, LogOut, ShieldCheck, UserPlus, LogIn, BadgeCheck, Copy, ClipboardList, BarChart3, WifiOff, KeyRound } from "lucide-react";
+import { Lock, Maximize, Flag, ChevronLeft, ChevronRight, AlertTriangle, Trophy, LogOut, ShieldCheck, UserPlus, LogIn, BadgeCheck, Copy, ClipboardList, BarChart3, WifiOff, KeyRound, LifeBuoy, Sparkles } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import logo from "@/assets/logo.jpg.asset.json";
 import { Shell, Panel, Btn } from "@/components/Shell";
@@ -11,7 +11,7 @@ import { fmt } from "@/lib/identity";
 import { HEARTBEAT_MS } from "@/lib/exam-timing";
 import { enterFullscreen, exitFullscreen, inFullscreen, fullscreenSupported, FULLSCREEN_EVENTS } from "@/lib/fullscreen";
 import { usePublicState } from "@/lib/live";
-import { studentExam, studentSync, studentFlag, studentResults } from "@/lib/exam.functions";
+import { studentExam, studentSync, studentFlag, studentResults, studentHelp } from "@/lib/exam.functions";
 import { registerStudent, loginStudent, checkRegistrationName, studentPing, studentSignOut, type PublicStudent } from "@/lib/students.functions";
 
 export const Route = createFileRoute("/student")({
@@ -239,6 +239,8 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
   const load = useServerFn(studentExam);
   const sync = useServerFn(studentSync);
   const flagFn = useServerFn(studentFlag);
+  const helpFn = useServerFn(studentHelp);
+  const [help, setHelp] = useState<"idle" | "sending" | "sent">("idle");
   const who = { name: student.name, id: student.id, token: student.sessionToken ?? "" };
   const [paused, setPaused] = useState(false);
   const [pauseReason, setPauseReason] = useState<string | null>(null);
@@ -341,6 +343,13 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
     try { await flagFn({ data: { ...who, questionId: id, note: flagNote.trim() || undefined } }); setFlagged((f) => new Set(f).add(id)); } catch { setErr("Could not send the flag."); }
     setFlagNote("");
   };
+  // One tap tells the Director who needs help (name, ID, class, subject, question). No pop-up, so fullscreen stays on.
+  const askHelp = async () => {
+    if (help !== "idle") return;
+    setHelp("sending");
+    try { await helpFn({ data: { ...who, question: idxRef.current + 1 } }); setHelp("sent"); setTimeout(() => setHelp("idle"), HELP_COOLDOWN_SEC * 1000); }
+    catch (e) { setHelp("idle"); setErr(e instanceof Error ? e.message : "Could not send your help request. Raise your hand."); }
+  };
 
   if (ended) return (
     <div className="flex min-h-screen items-center justify-center p-4">
@@ -369,8 +378,10 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
           <div className="text-sm"><div className="font-semibold">{paper.title}</div><div className="text-xs text-muted-foreground">{student.id} · {answeredCount}/{paper.paper.length} answered</div></div>
           <span className={`rounded-full border border-border px-2.5 py-1 font-mono text-sm font-bold lg:hidden ${left < 300 ? "text-destructive" : "text-primary"}`} aria-label="Time left">{fmt(left)}</span>
           <span className={`ml-auto flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${violations ? "border-destructive/50 text-destructive" : "border-accent/40 text-accent"}`}><AlertTriangle className="h-3.5 w-3.5" />{violations}/3 warnings</span>
+          <Btn variant="ghost" className="px-3" disabled={help !== "idle"} onClick={askHelp} title="Ask the Director for help" aria-label="Ask the Director for help"><LifeBuoy className={`h-4 w-4 ${help === "sent" ? "text-accent" : "text-warning"}`} /><span className="hidden sm:inline">{help === "sent" ? "Help sent" : help === "sending" ? "Sending…" : "Help"}</span></Btn>
           <Btn variant="accent" onClick={() => setAskSubmit(true)}>Submit</Btn>
         </div>
+        {help === "sent" && <p role="status" className="border-t border-border bg-accent/10 px-3 py-1.5 text-center text-xs text-accent">The Director has your name and ID and is coming to help. Stay in your seat — your time keeps running.</p>}
       </div>
       {paused && (
         <div role="dialog" aria-modal="true" aria-labelledby="paused-title" className="fixed inset-0 z-40 flex items-center justify-center bg-background/90 p-4 backdrop-blur-sm">
@@ -464,7 +475,20 @@ function Results({ student }: { student: PublicStudent }) {
   const fn = useServerFn(studentResults);
   const [round, setRound] = useState<number | undefined>();
   const [pin, setPin] = useState(""); const [typed, setTyped] = useState(""); const [typed2, setTyped2] = useState("");
-  const { data, error } = useQuery({ queryKey: ["results", student.id, round, pin], queryFn: () => fn({ data: { name: student.name, id: student.id, token: student.sessionToken ?? "", round, pin: pin || undefined } }), refetchInterval: 10000, retry: false });
+  const { data, error } = useQuery({ queryKey: ["results", student.id, round, pin], queryFn: () => fn({ data: { name: student.name, id: student.id, token: student.sessionToken ?? "", round, pin: pin || undefined } }), refetchInterval: 4000, retry: false });
+  // When the Director adds marks for a flagged question, the scorecard refreshes by itself and says so.
+  const lastScores = useRef<{ round: number; scores: Record<string, number> } | null>(null);
+  const [raised, setRaised] = useState<string[]>([]);
+  useEffect(() => {
+    if (!data?.published || data.locked) return;
+    const now = data.scores as Record<string, number>;
+    const prev = lastScores.current;
+    if (prev && prev.round === data.round) {
+      const up = Object.keys(now).filter((k) => prev.scores[k] !== undefined && now[k] > prev.scores[k]!);
+      if (up.length) { setRaised(up); setTimeout(() => setRaised([]), 15000); }
+    }
+    lastScores.current = { round: data.round, scores: now };
+  }, [data]);
   if (error && pin) return <PinForm mode="enter" err={error instanceof Error ? error.message : "Wrong result passcode."} typed={typed} setTyped={setTyped} typed2={typed2} setTyped2={setTyped2} onSubmit={(p) => setPin(p)} />;
   if (!data) return <p className="text-muted-foreground">{error ? (error instanceof Error ? error.message : "Could not load results.") : "Loading…"}</p>;
   if (data.published && data.locked) return <PinForm mode={data.locked} err="" typed={typed} setTyped={setTyped} typed2={typed2} setTyped2={setTyped2} onSubmit={(p) => setPin(p)} />;
@@ -480,6 +504,7 @@ function Results({ student }: { student: PublicStudent }) {
   const max = taken.length * 100;
   return (
     <div className="tile glow">
+      {!!raised.length && <p role="status" className="mb-4 flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent"><Sparkles className="h-4 w-4 shrink-0" />Your marks were updated by the Director: {raised.join(", ")}.</p>}
       <div className="mb-5 flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground">Exam round</span>
         {(data.rounds.length ? data.rounds : [data.round]).map((r) => <Btn key={r} variant={r === data.round ? "primary" : "ghost"} className="py-1" onClick={() => setRound(r)}>Round {r}</Btn>)}
