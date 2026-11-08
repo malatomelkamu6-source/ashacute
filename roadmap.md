@@ -49,3 +49,6 @@
 - [x] Director: "Delete all" alerts button; header icon changed
 - [x] Exam stays fullscreen until it ends (no pop-ups that exit it, tap returns to fullscreen, works on every device)
 - [x] Exam: questions cannot be selected or copied
+- [x] Closing waits for students with extra or paused time; with Auto close the Director only opens the exam
+- [x] Student results refresh by themselves after the Director adds marks for a flagged question
+- [x] Exam Help button sends the student name, ID and class to the Director

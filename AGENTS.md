@@ -54,3 +54,5 @@ use the editor.
 
 - `selected_student_codes` (NULL = everyone) is the exam-room list; only listed students may start. `apply_exam_schedule` closes the session (manual or Auto) once every admitted verified student has finished when `auto_close` is on, recording `auto_completed`.
 - `hidden_staff_roles` hides staff pages from the home page and menus via `visibleRoles`; staff links render only after the setting loads, and direct links keep working.
+- `apply_exam_schedule` (Auto schedule) treats the closing time as the last start time only: the session stays live while any current-round attempt is in progress and the function submits time-expired unpaused attempts itself, so extended or paused students are never cut off.
+- When `auto_close` is on, server functions refuse a manual close of a live session; the Director only opens it and it closes when every admitted student has finished.
