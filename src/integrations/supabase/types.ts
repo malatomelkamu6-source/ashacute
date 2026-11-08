@@ -14,13 +14,441 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      exam_attempts: {
+        Row: {
+          answers: Json
+          bank_id: string
+          bonus_questions: string[]
+          current_question: number
+          deadline_at: string | null
+          id: string
+          last_seen_at: string | null
+          pause_reason: string | null
+          paused_at: string | null
+          results_reset_at: string | null
+          round: number
+          score: number | null
+          started_at: string
+          status: string
+          student_code: string
+          submitted_at: string | null
+          total: number | null
+          violations: number
+        }
+        Insert: {
+          answers?: Json
+          bank_id: string
+          bonus_questions?: string[]
+          current_question?: number
+          deadline_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          pause_reason?: string | null
+          paused_at?: string | null
+          results_reset_at?: string | null
+          round: number
+          score?: number | null
+          started_at?: string
+          status?: string
+          student_code: string
+          submitted_at?: string | null
+          total?: number | null
+          violations?: number
+        }
+        Update: {
+          answers?: Json
+          bank_id?: string
+          bonus_questions?: string[]
+          current_question?: number
+          deadline_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          pause_reason?: string | null
+          paused_at?: string | null
+          results_reset_at?: string | null
+          round?: number
+          score?: number | null
+          started_at?: string
+          status?: string
+          student_code?: string
+          submitted_at?: string | null
+          total?: number | null
+          violations?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_attempts_bank_id_fkey"
+            columns: ["bank_id"]
+            isOneToOne: false
+            referencedRelation: "question_banks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_attempts_student_code_fkey"
+            columns: ["student_code"]
+            isOneToOne: false
+            referencedRelation: "registered_students"
+            referencedColumns: ["student_code"]
+          },
+        ]
+      }
+      exam_events: {
+        Row: {
+          bank_id: string | null
+          created_at: string
+          dismissed_at: string | null
+          id: string
+          kind: string
+          message: string
+          question_id: string | null
+          round: number | null
+          student_code: string
+          teacher_dismissed_at: string | null
+          teacher_id: string | null
+        }
+        Insert: {
+          bank_id?: string | null
+          created_at?: string
+          dismissed_at?: string | null
+          id?: string
+          kind: string
+          message: string
+          question_id?: string | null
+          round?: number | null
+          student_code: string
+          teacher_dismissed_at?: string | null
+          teacher_id?: string | null
+        }
+        Update: {
+          bank_id?: string | null
+          created_at?: string
+          dismissed_at?: string | null
+          id?: string
+          kind?: string
+          message?: string
+          question_id?: string | null
+          round?: number | null
+          student_code?: string
+          teacher_dismissed_at?: string | null
+          teacher_id?: string | null
+        }
+        Relationships: []
+      }
+      exam_rounds: {
+        Row: {
+          archived_at: string | null
+          round: number
+        }
+        Insert: {
+          archived_at?: string | null
+          round: number
+        }
+        Update: {
+          archived_at?: string | null
+          round?: number
+        }
+        Relationships: []
+      }
+      exam_settings: {
+        Row: {
+          active_bank_id: string | null
+          auto_close: boolean
+          auto_completed: boolean
+          auto_schedule: boolean
+          current_round: number
+          duration_sec: number
+          ends_at: string | null
+          exam_live: boolean
+          extension_sec: number
+          hidden_staff_roles: string[]
+          id: number
+          registration_open: boolean
+          results_published: boolean
+          sat_enabled: boolean
+          scheduled_close: string | null
+          scheduled_start: string | null
+          selected_student_codes: string[] | null
+          social_bank_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active_bank_id?: string | null
+          auto_close?: boolean
+          auto_completed?: boolean
+          auto_schedule?: boolean
+          current_round?: number
+          duration_sec?: number
+          ends_at?: string | null
+          exam_live?: boolean
+          extension_sec?: number
+          hidden_staff_roles?: string[]
+          id?: number
+          registration_open?: boolean
+          results_published?: boolean
+          sat_enabled?: boolean
+          scheduled_close?: string | null
+          scheduled_start?: string | null
+          selected_student_codes?: string[] | null
+          social_bank_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active_bank_id?: string | null
+          auto_close?: boolean
+          auto_completed?: boolean
+          auto_schedule?: boolean
+          current_round?: number
+          duration_sec?: number
+          ends_at?: string | null
+          exam_live?: boolean
+          extension_sec?: number
+          hidden_staff_roles?: string[]
+          id?: number
+          registration_open?: boolean
+          results_published?: boolean
+          sat_enabled?: boolean
+          scheduled_close?: string | null
+          scheduled_start?: string | null
+          selected_student_codes?: string[] | null
+          social_bank_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_settings_social_bank_id_fkey"
+            columns: ["social_bank_id"]
+            isOneToOne: false
+            referencedRelation: "question_banks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      question_banks: {
+        Row: {
+          created_at: string
+          id: string
+          questions: Json
+          status: string
+          subject: string
+          target_stream: string | null
+          teacher_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          questions?: Json
+          status?: string
+          subject: string
+          target_stream?: string | null
+          teacher_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          questions?: Json
+          status?: string
+          subject?: string
+          target_stream?: string | null
+          teacher_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_banks_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "school_roster"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registered_students: {
+        Row: {
+          created_at: string
+          face_verified: boolean
+          full_name: string
+          gender: string
+          grade: string
+          id: string
+          photo_path: string
+          results_pin_hash: string | null
+          roster_id: string | null
+          section: string
+          session_seen_at: string | null
+          session_token: string | null
+          stream: string
+          student_code: string
+        }
+        Insert: {
+          created_at?: string
+          face_verified?: boolean
+          full_name: string
+          gender: string
+          grade?: string
+          id?: string
+          photo_path: string
+          results_pin_hash?: string | null
+          roster_id?: string | null
+          section: string
+          session_seen_at?: string | null
+          session_token?: string | null
+          stream: string
+          student_code: string
+        }
+        Update: {
+          created_at?: string
+          face_verified?: boolean
+          full_name?: string
+          gender?: string
+          grade?: string
+          id?: string
+          photo_path?: string
+          results_pin_hash?: string | null
+          roster_id?: string | null
+          section?: string
+          session_seen_at?: string | null
+          session_token?: string | null
+          stream?: string
+          student_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registered_students_roster_id_fkey"
+            columns: ["roster_id"]
+            isOneToOne: false
+            referencedRelation: "school_roster"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      round_results: {
+        Row: {
+          round: number
+          score_pct: number
+          student_code: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          round: number
+          score_pct: number
+          student_code: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          round?: number
+          score_pct?: number
+          student_code?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      school_roster: {
+        Row: {
+          batch: string
+          full_name: string
+          gender: string
+          grade: string
+          id: string
+          kind: string
+          section: string
+          stream: string
+          subjects: string[]
+        }
+        Insert: {
+          batch?: string
+          full_name: string
+          gender?: string
+          grade?: string
+          id: string
+          kind: string
+          section?: string
+          stream: string
+          subjects?: string[]
+        }
+        Update: {
+          batch?: string
+          full_name?: string
+          gender?: string
+          grade?: string
+          id?: string
+          kind?: string
+          section?: string
+          stream?: string
+          subjects?: string[]
+        }
+        Relationships: []
+      }
+      staff_credentials: {
+        Row: {
+          passcode: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          passcode: string
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          passcode?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_edit_identity_name: {
+        Args: { new_name: string; person_id: string; person_target: string }
+        Returns: undefined
+      }
+      apply_exam_schedule: { Args: never; Returns: undefined }
+      award_question_marks: {
+        Args: {
+          p_bank: string
+          p_codes: string[]
+          p_question: string
+          p_round: number
+        }
+        Returns: number
+      }
+      director_attempt_time: {
+        Args: { p_action: string; p_attempt: string; p_minutes: number }
+        Returns: undefined
+      }
+      exam_everyone_finished: {
+        Args: { s: Database["public"]["Tables"]["exam_settings"]["Row"] }
+        Returns: boolean
+      }
+      extend_exam_minutes: { Args: { p_minutes: number }; Returns: undefined }
+      pause_disconnected_attempts: {
+        Args: { p_grace_sec: number }
+        Returns: number
+      }
+      reset_visible_results: {
+        Args: { p_round: number; p_stream: string }
+        Returns: number
+      }
+      save_exam_submission: {
+        Args: {
+          p_answers: Json
+          p_attempt: string
+          p_status: string
+          p_violations: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
