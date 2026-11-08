@@ -52,7 +52,6 @@ use the editor.
 - Student result passcodes are stored only as a SHA-256 hash (`registered_students.results_pin_hash`, salted with the student code via `hashResultPin`); `studentResults` returns a locked state until the right passcode is sent, and students registered before passcodes existed set one on first unlock.
 - Teacher mark views (`teacherMarks`) are scoped server-side to the teacher's own subjects and `teacherStream`, across every paper of that subject, never other subjects.
 
-- `selected_student_codes` (NULL = everyone) is the exam-room list; only listed students may start. `apply_exam_schedule` closes the session (manual or Auto) once every admitted verified student has finished when `auto_close` is on, recording `auto_completed`.
+- `selected_student_codes` (NULL = everyone) is the exam-room list; only listed students may start.
 - `hidden_staff_roles` hides staff pages from the home page and menus via `visibleRoles`; staff links render only after the setting loads, and direct links keep working.
-- `apply_exam_schedule` (Auto schedule) treats the closing time as the last start time only: the session stays live while any current-round attempt is in progress and the function submits time-expired unpaused attempts itself, so extended or paused students are never cut off.
-- When `auto_close` is on, server functions refuse a manual close of a live session; the Director only opens it and it closes when every admitted student has finished.
+- `apply_exam_schedule` closes when every admitted student finished (`auto_close`, sets `auto_completed`); in Auto its close time only ends new starts and the session stays live while attempts are in progress, so extended or paused students are never cut off.
