@@ -418,6 +418,13 @@ function ChangePassword({ pass, onChanged }: { pass: string; onChanged: (p: stri
   );
 }
 
+function sessionDesc(s: { examLive: boolean; autoSchedule: boolean; autoClose: boolean; autoCompleted: boolean }) {
+  if (!s.examLive) return s.autoCompleted ? "Closed automatically — every admitted student submitted" : "Closed — active exams auto-submit";
+  if (s.autoSchedule) return "Open on schedule. After the last start time it stays open for students with extra or paused time, then closes by itself";
+  if (s.autoClose) return "Open — closes by itself after every admitted student submits, including students given extra time";
+  return "Students can start";
+}
+
 function Row({ label, desc, children }: { label: React.ReactNode; desc: string; children: React.ReactNode }) {
   return <div className="flex items-center justify-between gap-3"><div><div className="text-sm font-medium">{label}</div><div className="text-xs text-muted-foreground">{desc}</div></div>{children}</div>;
 }
