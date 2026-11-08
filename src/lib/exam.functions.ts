@@ -454,11 +454,16 @@ export const studentResults = createServerFn({ method: "POST" })
   });
 
 export const directorRemove = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ passcode: pass, alertId: z.string().uuid().optional(), round: z.number().int().min(1).optional() }).refine(d => !!d.alertId !== !!d.round, "Choose an alert or round.").parse(d))
+  .inputValidator((d: unknown) => z.object({ passcode: pass, alertId: z.string().uuid().optional(), round: z.number().int().min(1).optional(), allAlerts: z.literal(true).optional() }).refine(d => [!!d.alertId, !!d.round, !!d.allAlerts].filter(Boolean).length === 1, "Choose an alert or round.").parse(d))
   .handler(async ({ data }) => {
     await dir(data.passcode);
     const sb = await admin();
-    if (data.alertId) {
+    if (data.allAlerts) {
+      // Clears the whole alert feed for the current round; records are dismissed, not deleted, so marks and flag awards stay intact.
+      const s = await settings();
+      const { error } = await sb.from("exam_events").update({ dismissed_at: now() }).is("dismissed_at", null).eq("round", s.current_round);
+      if (error) throw new Error("Could not remove the alerts.");
+    } else if (data.alertId) {
       const { error } = await sb.from("exam_events").update({ dismissed_at: now() }).eq("id", data.alertId);
       if (error) throw new Error("Could not remove the alert.");
     } else if (data.round) {
