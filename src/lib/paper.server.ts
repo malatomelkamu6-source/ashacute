@@ -91,7 +91,6 @@ export async function scanPaper(input: PaperInput): Promise<ScannedQuestion[]> {
   });
   try {
     const output = await result.output;
-    if (process.env["PAPER_DEBUG"]) console.log(JSON.stringify(output));
     return normalizeScanned(output);
   } catch (err) {
     if (NoObjectGeneratedError.isInstance(err) && err.text) {
