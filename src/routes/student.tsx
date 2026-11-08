@@ -325,7 +325,11 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
     window.addEventListener("blur", blur); document.addEventListener("visibilitychange", vis);
     FULLSCREEN_EVENTS.forEach((n) => document.addEventListener(n, fs));
     document.addEventListener("pointerdown", back, true);
+    // Block copy / select-all / print / save shortcuts while the exam runs.
+    const keys = (e: KeyboardEvent) => { if (!endedRef.current && (e.ctrlKey || e.metaKey) && ["c", "x", "a", "p", "s", "u"].includes(e.key.toLowerCase())) e.preventDefault(); };
+    document.addEventListener("keydown", keys, true);
     return () => {
+      document.removeEventListener("keydown", keys, true);
       window.removeEventListener("blur", blur); document.removeEventListener("visibilitychange", vis);
       FULLSCREEN_EVENTS.forEach((n) => document.removeEventListener(n, fs));
       document.removeEventListener("pointerdown", back, true);
@@ -356,7 +360,9 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
   const answeredCount = Object.keys(answers).length;
   return (
     // The exam covers the whole screen on every device, including phones whose browser has no fullscreen mode.
-    <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-background">
+    // Questions and choices cannot be selected, copied, cut, dragged or long-pressed during the exam.
+    <div className="fixed inset-0 z-50 select-none overflow-y-auto overscroll-contain bg-background [-webkit-touch-callout:none]"
+      onCopy={(e) => e.preventDefault()} onCut={(e) => e.preventDefault()} onContextMenu={(e) => e.preventDefault()} onDragStart={(e) => e.preventDefault()}>
       <div className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-3 py-2 sm:gap-4 sm:px-4 sm:py-3">
           <img src={logo.url} alt="" className="h-9 w-9 rounded-full" />
@@ -402,7 +408,7 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
           <div className="glass w-full max-w-sm p-6">
             <h2 id="flag-title" className="flex items-center gap-2 text-lg font-bold"><Flag className="h-5 w-5 text-warning" />Report this question</h2>
             <label className="mt-3 block text-sm text-muted-foreground" htmlFor="flag-note">What is wrong with it? (optional)</label>
-            <textarea id="flag-note" className="field mt-2 min-h-24" maxLength={300} value={flagNote} onChange={(e) => setFlagNote(e.target.value)} />
+            <textarea id="flag-note" className="field mt-2 min-h-24 select-text" maxLength={300} value={flagNote} onChange={(e) => setFlagNote(e.target.value)} />
             <div className="mt-4 flex gap-2"><Btn variant="ghost" className="flex-1" onClick={() => { setFlagFor(null); setFlagNote(""); }}>Cancel</Btn><Btn className="flex-1" onClick={sendFlag}>Send report</Btn></div>
           </div>
         </div>
