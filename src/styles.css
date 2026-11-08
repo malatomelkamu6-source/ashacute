@@ -179,9 +179,9 @@
   }
 }
 @utility logo-ring {
-  border-radius: 9999px; padding: 2px;
-  background: var(--color-primary);
-  box-shadow: 0 0 18px -4px oklch(0.82 0.14 205 / 0.7);
+  border-radius: 9999px; padding: 1px;
+  background: color-mix(in oklab, var(--color-primary) 35%, transparent);
+  box-shadow: 0 0 10px -4px oklch(0.82 0.14 205 / 0.35);
 }
 @utility text-premium {
   color: var(--color-foreground);
