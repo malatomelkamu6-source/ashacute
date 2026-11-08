@@ -89,7 +89,9 @@ export const loginStudent = createServerFn({ method: "POST" })
     const sameDevice = !!data.token && data.token === row.session_token;
     if (!sameDevice) {
       const { data: st } = await sb.from("exam_settings").select("exam_live,current_round").eq("id", 1).single();
-      if (sessionBlocksSignIn(!!st?.exam_live, row.session_token ? row.session_seen_at : null)) {
+      // A device that lost power or internet has its exam frozen; the student may sign in again (on the same or another device) to wait for the Director.
+      const { data: frozen } = await sb.from("exam_attempts").select("id").eq("student_code", row.student_code).eq("status", "in_progress").eq("pause_reason", "connection").limit(1);
+      if (!frozen?.length && sessionBlocksSignIn(!!st?.exam_live, row.session_token ? row.session_seen_at : null)) {
         await sb.from("exam_events").insert({ kind: "violation", student_code: row.student_code, round: st?.current_round ?? null, message: `Second sign-in blocked for ${row.full_name} — already signed in on another device` });
         return { ok: false as const, error: "This student is already signed in on another device during the exam. Only one sign-in is allowed." };
       }

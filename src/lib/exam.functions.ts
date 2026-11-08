@@ -254,7 +254,7 @@ async function teacher(passcode: string, teacherId: string) {
 export const listTeachers = createServerFn({ method: "GET" }).handler(async () => {
   const sb = await admin();
   const { data } = await sb.from("school_roster").select("id,full_name,stream,subjects").eq("kind", "teacher").order("id");
-  return data ?? [];
+  return (data ?? []).map((t) => ({ ...t, subjects: uploadSubjects(t.subjects) }));
 });
 
 export const teacherDashboard = createServerFn({ method: "POST" })
