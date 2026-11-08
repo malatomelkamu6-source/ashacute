@@ -14,18 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      _tmp_restore: {
-        Row: {
-          id: string | null
-        }
-        Insert: {
-          id?: string | null
-        }
-        Update: {
-          id?: string | null
-        }
-        Relationships: []
-      }
       exam_attempts: {
         Row: {
           answers: Json

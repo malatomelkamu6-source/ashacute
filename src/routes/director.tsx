@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import * as XLSX from "xlsx";
-import { Power, Megaphone, Timer, Table2, KeyRound, ListChecks, Plus, Radio, UserCheck, AlertTriangle, Layers, Trash2, CalendarDays, Download, Pause, Play, Search, BarChart3, RotateCcw, Trophy, Medal, Award, WifiOff, Wifi, Settings, X, Users, BookOpenCheck, DoorClosed, CheckCircle2 } from "lucide-react";
+import { Power, Megaphone, Timer, Table2, KeyRound, ListChecks, Plus, Radio, UserCheck, AlertTriangle, Layers, Trash2, CalendarDays, Download, Pause, Play, Search, BarChart3, RotateCcw, Trophy, Medal, Award, WifiOff, Wifi, Settings, X, Users, BookOpenCheck, DoorClosed, CheckCircle2, LifeBuoy } from "lucide-react";
 import logo from "@/assets/logo.jpg.asset.json";
 import { Shell, Panel, Toggle, Btn } from "@/components/Shell";
 import { directorDashboard, directorUpdate, directorClock, directorNewRound, directorReadmit, directorChangePassword, directorRemove, directorRemoveBank, directorResetResults, directorStudentTime, directorAwardFlag } from "@/lib/exam.functions";
@@ -81,6 +81,9 @@ function Console({ pass, onPass }: { pass: string; onPass: (p: string) => void }
   const bankTitle = (id: string | null) => (id ? d.banks.find((b) => b.id === id)?.title ?? null : null);
   const isActive = (id: string) => s.activeBankId === id || s.socialBankId === id;
   const activeFor = (stream: string) => (stream === "Social Science" ? s.socialBankId : s.activeBankId);
+  // Help requests stay at the top until the Director removes them.
+  const alerts = [...d.events.filter((e) => e.kind === "help"), ...d.events.filter((e) => e.kind !== "help")];
+  const helpCount = alerts.filter((e) => e.kind === "help").length;
 
   return (
     <Shell title="Director Console" subtitle={`Round ${s.round} · Burka Harbu Special Secondary School`}>
@@ -94,7 +97,7 @@ function Console({ pass, onPass }: { pass: string; onPass: (p: string) => void }
           <div className="flex items-center gap-2"><Settings className="h-5 w-5 text-primary" /><h2 className="text-lg font-semibold">Settings</h2><button type="button" aria-label="Close settings" className="ml-auto rounded-lg p-1 text-muted-foreground hover:text-foreground" onClick={() => setShowSettings(false)}><X className="h-5 w-5" /></button></div>
           <section className="space-y-4 rounded-xl border border-border p-4">
             <Row label={<span className="flex items-center gap-1.5"><BookOpenCheck className="h-3.5 w-3.5" />SAT subject</span>} desc={s.satEnabled ? "SAT included — totals are out of 600" : "SAT not offered — totals are out of 500"}><Toggle label="SAT enabled" on={s.satEnabled} onChange={(v) => act(() => update({ data: { passcode: pass, satEnabled: v } }))} /></Row>
-            <Row label={<span className="flex items-center gap-1.5"><DoorClosed className="h-3.5 w-3.5" />Auto-close when all submit</span>} desc={s.autoClose ? "The exam closes by itself once every admitted student has submitted" : "The exam stays open until you close it or the schedule ends"}><Toggle label="Auto-close when all submit" on={s.autoClose} onChange={(v) => act(() => update({ data: { passcode: pass, autoClose: v } }))} /></Row>
+            <Row label={<span className="flex items-center gap-1.5"><DoorClosed className="h-3.5 w-3.5" />Auto-close when all submit</span>} desc={s.autoClose ? "You only open the exam. It closes by itself once every admitted student has submitted — students given extra or paused time are waited for" : "The exam stays open until you close it or the schedule ends"}><Toggle label="Auto-close when all submit" on={s.autoClose} onChange={(v) => act(() => update({ data: { passcode: pass, autoClose: v } }))} /></Row>
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
               <div><div className="text-sm font-medium">Exam round</div><div className="text-xs text-muted-foreground">Currently Round {s.round}. Old rounds are kept.</div></div>
               <Btn variant="ghost" onClick={() => confirm(`Close Round ${s.round} and start Round ${s.round + 1}?`) && act(() => newRound({ data: { passcode: pass } }))}><Layers className="h-4 w-4" />New round</Btn>
@@ -110,7 +113,9 @@ function Console({ pass, onPass }: { pass: string; onPass: (p: string) => void }
         <Panel title="Global switches" icon={<Power className="h-4 w-4" />}>
           <div className="space-y-4">
             <Row label="Auto schedule" desc={s.autoSchedule ? "Scheduled opening and closing enabled" : "Manual control"}><Toggle label="Auto schedule" on={s.autoSchedule} onChange={v => act(() => update({ data: { passcode: pass, autoSchedule: v } }))} /></Row>
-            <Row label="Exam session open" desc={s.examLive ? "Students can start" : s.autoCompleted ? "Closed automatically — every admitted student submitted" : "Closed — active exams auto-submit"}><Toggle label="Exam session open" on={s.examLive} onChange={(v) => !s.autoSchedule && act(() => update({ data: { passcode: pass, examLive: v } }))} /></Row>
+            <Row label="Exam session open" desc={sessionDesc(s)}>{s.examLive && s.autoClose && !s.autoSchedule
+              ? <span className="flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-medium text-accent" title="Turn Auto close off in Settings to close it yourself"><DoorClosed className="h-3.5 w-3.5" />Auto close</span>
+              : <Toggle label="Exam session open" on={s.examLive} onChange={(v) => !s.autoSchedule && act(() => update({ data: { passcode: pass, examLive: v } }))} />}</Row>
             <Row label={<span className="flex items-center gap-1.5"><Megaphone className="h-3.5 w-3.5" />Publish results</span>} desc={s.resultsPublished ? "Scorecards visible" : "Scorecards hidden"}><Toggle label="Publish results" on={s.resultsPublished} onChange={(v) => act(() => update({ data: { passcode: pass, resultsPublished: v } }))} /></Row>
           </div>
         </Panel>
@@ -161,10 +166,10 @@ function Console({ pass, onPass }: { pass: string; onPass: (p: string) => void }
             {blocked.map((a) => <div key={a.student_code} className="flex items-center gap-2 py-1 text-sm"><span className="flex-1">{nameOf(a.student_code)} <span className="font-mono text-xs text-muted-foreground">{a.student_code}</span></span><Btn variant="ghost" className="py-1 text-xs" onClick={() => act(() => readmit({ data: { passcode: pass, studentCode: a.student_code } }))}><UserCheck className="h-3.5 w-3.5" />Re-admit</Btn></div>)}
           </div>}
         </Panel>
-        <Panel title="Alerts" icon={<AlertTriangle className="h-4 w-4" />} action={!!d.events.length && <Btn variant="danger" className="px-3 py-1 text-xs" title="Delete all alerts" aria-label="Delete all alerts" onClick={() => confirm(`Delete all ${d.events.length} alert(s)? Marks and awarded points are kept.`) && act(async () => { await remove({ data: { passcode: pass, allAlerts: true } }); setAwardFor(null); setNotice("All alerts removed."); })}><Trash2 className="h-3.5 w-3.5" />Delete all</Btn>}>
+        <Panel title={helpCount ? `Alerts · ${helpCount} need help` : "Alerts"} icon={helpCount ? <LifeBuoy className="h-4 w-4 animate-pulse text-warning" /> : <AlertTriangle className="h-4 w-4" />} action={!!d.events.length && <Btn variant="danger" className="px-3 py-1 text-xs" title="Delete all alerts" aria-label="Delete all alerts" onClick={() => confirm(`Delete all ${d.events.length} alert(s)? Marks and awarded points are kept.`) && act(async () => { await remove({ data: { passcode: pass, allAlerts: true } }); setAwardFor(null); setNotice("All alerts removed."); })}><Trash2 className="h-3.5 w-3.5" />Delete all</Btn>}>
           <ul className="max-h-96 space-y-2 overflow-y-auto text-sm">
-            {d.events.map((e) => <li key={e.id} className={`rounded-lg border p-2 ${e.kind === "violation" || e.kind === "blocked" ? "border-destructive/40 bg-destructive/10" : e.kind === "flag" ? "border-warning/40 bg-warning/10" : "border-border"}`}>
-              <div className="flex items-start gap-2"><div className="flex-1"><div className="text-xs text-muted-foreground">{new Date(e.created_at).toLocaleTimeString()} · {e.kind} · {e.student_code}</div>{e.message}</div>{e.kind === "flag" && e.bank_id && e.question_id && <Btn variant="ghost" className="px-2 py-1" title="Add marks for this question" aria-label="Add marks for this flagged question" onClick={() => setAwardFor(awardFor === e.id ? null : e.id)}><Award className="h-4 w-4" /></Btn>}<Btn variant="ghost" className="px-2 py-1" title="Remove alert" aria-label="Remove alert" onClick={() => act(() => remove({ data: { passcode: pass, alertId: e.id } }))}><Trash2 className="h-4 w-4" /></Btn></div>
+            {alerts.map((e) => <li key={e.id} className={`rounded-lg border p-2 ${e.kind === "help" ? "border-2 border-accent bg-accent/10" : e.kind === "violation" || e.kind === "blocked" ? "border-destructive/40 bg-destructive/10" : e.kind === "flag" ? "border-warning/40 bg-warning/10" : "border-border"}`}>
+              <div className="flex items-start gap-2">{e.kind === "help" && <LifeBuoy className="mt-0.5 h-5 w-5 shrink-0 text-accent" aria-hidden />}<div className="min-w-0 flex-1"><div className="text-xs text-muted-foreground">{new Date(e.created_at).toLocaleTimeString()} · {e.kind === "help" ? <span className="font-semibold text-accent">Help needed</span> : e.kind} · {e.student_code}</div><span className={e.kind === "help" ? "font-medium" : ""}>{e.message}</span></div>{e.kind === "flag" && e.bank_id && e.question_id && <Btn variant="ghost" className="px-2 py-1" title="Add marks for this question" aria-label="Add marks for this flagged question" onClick={() => setAwardFor(awardFor === e.id ? null : e.id)}><Award className="h-4 w-4" /></Btn>}<Btn variant="ghost" className="px-2 py-1" title="Remove alert" aria-label="Remove alert" onClick={() => act(() => remove({ data: { passcode: pass, alertId: e.id } }))}><Trash2 className="h-4 w-4" /></Btn></div>
                 {e.kind === "flag" && <div className="mt-1 text-xs text-warning">Flagged by {d.flagCounts[`${e.bank_id}|${e.question_id}`] ?? 1} student(s)</div>}
                 {awardFor === e.id && <div className="mt-2 rounded-lg border border-border bg-background/60 p-2">
                   <div className="mb-2 text-xs text-muted-foreground">If this question is wrong, give its full marks. Students who already answered it correctly keep the same score. Each student gets it only once.</div>
@@ -411,6 +416,13 @@ function ChangePassword({ pass, onChanged }: { pass: string; onChanged: (p: stri
       </form>
     </Panel>
   );
+}
+
+function sessionDesc(s: { examLive: boolean; autoSchedule: boolean; autoClose: boolean; autoCompleted: boolean }) {
+  if (!s.examLive) return s.autoCompleted ? "Closed automatically — every admitted student submitted" : "Closed — active exams auto-submit";
+  if (s.autoSchedule) return "Open on schedule. After the last start time it stays open for students with extra or paused time, then closes by itself";
+  if (s.autoClose) return "Open — closes by itself after every admitted student submits, including students given extra time";
+  return "Students can start";
 }
 
 function Row({ label, desc, children }: { label: React.ReactNode; desc: string; children: React.ReactNode }) {
