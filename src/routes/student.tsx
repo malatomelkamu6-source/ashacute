@@ -88,15 +88,15 @@ function StudentPage() {
   const first = student.name.split(" ")[0];
   return (
     <Shell title="Student Portal" subtitle="Burka Harbu Special Secondary School · Exam Portal" help>
-      <div className="tile mb-6 flex flex-wrap items-center gap-5">
-        {student.photoUrl ? <img src={student.photoUrl} alt={student.name} className="h-24 w-24 rounded-2xl object-cover ring-2 ring-primary/50 glow" /> : <div className="tile-icon h-24 w-24" />}
-        <div className="flex-1">
-          <h2 className="text-3xl font-bold">Welcome, {first}!</h2>
+      <div className="tile mb-4 flex flex-wrap items-center gap-3 sm:mb-6 sm:gap-5">
+        {student.photoUrl ? <img src={student.photoUrl} alt={student.name} className="h-16 w-16 rounded-2xl object-cover ring-2 ring-primary/50 glow sm:h-24 sm:w-24" /> : <div className="tile-icon h-16 w-16 sm:h-24 sm:w-24" />}
+        <div className="min-w-0 flex-1">
+          <h2 className="break-words text-2xl font-bold sm:text-3xl">Welcome, {first}!</h2>
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">{student.verified && <BadgeCheck aria-label="Face verified" className="verified-badge h-4 w-4" />}{student.id} · Grade {student.grade}{student.section} · {student.stream}</div>
         </div>
         <Btn variant="ghost" onClick={() => signOut()}><LogOut className="h-4 w-4" />Sign out</Btn>
       </div>
-      <div className="mb-6 grid grid-cols-2 gap-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:mb-6 sm:gap-4">
         <button onClick={() => setMode("home")} className={`tile tile-hover text-left ${mode === "home" ? "tile-active" : ""}`}><span className="tile-icon"><ClipboardList className="h-5 w-5" /></span><div className="mt-3 font-semibold">Exams</div><div className="text-sm text-muted-foreground">Scheduled tests</div></button>
         <button onClick={() => setMode("results")} className={`tile tile-hover text-left ${mode === "results" ? "tile-active" : ""}`}><span className="tile-icon"><BarChart3 className="h-5 w-5" /></span><div className="mt-3 font-semibold">My results</div><div className="text-sm text-muted-foreground">Official scorecard</div></button>
       </div>
@@ -434,11 +434,11 @@ function Results({ student }: { student: PublicStudent }) {
         <span className="text-sm text-muted-foreground">Exam round</span>
         {(data.rounds.length ? data.rounds : [data.round]).map((r) => <Btn key={r} variant={r === data.round ? "primary" : "ghost"} className="py-1" onClick={() => setRound(r)}>Round {r}</Btn>)}
       </div>
-      <div className="flex flex-wrap items-center gap-5">
-        {student.photoUrl && <img src={student.photoUrl} alt={student.name} className="h-24 w-24 rounded-2xl object-cover ring-2 ring-primary/50" />}
-        <div className="flex-1">
+      <div className="flex flex-wrap items-center gap-3 sm:gap-5">
+        {student.photoUrl && <img src={student.photoUrl} alt={student.name} className="h-16 w-16 rounded-2xl object-cover ring-2 ring-primary/50 sm:h-24 sm:w-24" />}
+        <div className="min-w-0 flex-1">
           <div className="text-xs uppercase tracking-widest text-primary">Official scorecard · Round {data.round}</div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold">{student.name}{student.verified && <BadgeCheck aria-label="Face verified" className="verified-badge h-5 w-5" />}</h2>
+          <h2 className="flex flex-wrap items-center gap-2 break-words text-xl font-bold sm:text-2xl">{student.name}{student.verified && <BadgeCheck aria-label="Face verified" className="verified-badge h-5 w-5" />}</h2>
           <div className="text-sm text-muted-foreground">{student.id} · Grade {student.grade}{student.section} · {student.stream}</div>
         </div>
         <div className="text-center"><Trophy className="mx-auto h-8 w-8 text-warning" /><div className="font-display text-2xl font-bold">{taken.length}/{subs.length}</div><div className="text-xs text-muted-foreground">subjects graded</div></div>

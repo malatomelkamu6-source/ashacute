@@ -50,7 +50,7 @@ export function Shell({ children, title, subtitle, help = false }: { children: R
           </Link>
           <nav className="-mx-1 flex w-full gap-1 overflow-x-auto rounded-full border border-border bg-secondary/50 p-1 md:mx-0 md:ml-auto md:w-auto">
             {shownRoles.map((r) => (
-              <Link key={r.to} to={r.to} className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+              <Link key={r.to} to={r.to} className="flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs sm:px-3 font-medium text-muted-foreground transition hover:text-foreground"
                 activeProps={{ className: "bg-primary text-primary-foreground hover:text-primary-foreground" }}>
                 <r.icon className="h-3.5 w-3.5" /> {r.label}
               </Link>
