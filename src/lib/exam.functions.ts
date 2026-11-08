@@ -208,7 +208,7 @@ export const directorClock = createServerFn({ method: "POST" })
     } else {
       if (data.action === "start" && (!activeBankIds(s).length || !s.scheduled_start || !s.scheduled_close || Date.parse(s.scheduled_close) <= Date.now())) throw new Error("Set the exam schedule first.");
       if (data.action === "stop") await settleAttempts(true);
-      const { error } = await sb.from("exam_settings").update({ exam_live: data.action === "start", updated_at: now() }).eq("id", 1);
+      const { error } = await sb.from("exam_settings").update({ exam_live: data.action === "start", ...(data.action === "start" ? { auto_completed: false } : {}), updated_at: now() }).eq("id", 1);
       if (error) throw new Error("Could not update the session.");
     }
     return { ok: true };
@@ -234,9 +234,9 @@ export const directorReadmit = createServerFn({ method: "POST" })
     await dir(data.passcode);
     const sb = await admin();
     const s = await settings();
-    if (!s.active_bank_id) throw new Error("No active exam.");
-    const { error } = await sb.from("exam_attempts").update({ status: "in_progress", violations: 0, submitted_at: null, paused_at: null, deadline_at: personalDeadline(now(), s.duration_sec, s.extension_sec) })
-      .eq("round", s.current_round).eq("bank_id", s.active_bank_id).eq("student_code", data.studentCode);
+    if (!activeBankIds(s).length) throw new Error("No active exam.");
+    const { error } = await sb.from("exam_attempts").update({ status: "in_progress", violations: 0, submitted_at: null, paused_at: null, pause_reason: null, last_seen_at: now(), deadline_at: personalDeadline(now(), s.duration_sec, s.extension_sec) })
+      .eq("round", s.current_round).in("bank_id", activeBankIds(s)).eq("student_code", data.studentCode).eq("status", "blocked");
     if (error) throw new Error("Could not re-admit this student.");
     await sb.from("exam_events").insert({ kind: "readmit", student_code: data.studentCode, round: s.current_round, message: "Re-admitted by the Director" });
     return { ok: true };
@@ -248,7 +248,7 @@ async function teacher(passcode: string, teacherId: string) {
   const sb = await admin();
   const { data } = await sb.from("school_roster").select("id,full_name,subjects,stream").eq("id", teacherId).eq("kind", "teacher").maybeSingle();
   if (!data) throw new Error("Teacher not found.");
-  return data;
+  return { ...data, subjects: uploadSubjects(data.subjects) };
 }
 
 export const listTeachers = createServerFn({ method: "GET" }).handler(async () => {
@@ -371,7 +371,10 @@ export const studentSync = createServerFn({ method: "POST" })
       await sb.from("exam_events").insert({ kind: "violation", student_code: st.student_code, round: s.current_round, message: `${st.full_name} ${data.violation === "fullscreen" ? "left fullscreen" : "switched away from the exam"} (${violations})` });
     }
     if (data.connectionLost && !paused) {
-      await sb.from("exam_attempts").update({ answers: data.answers, current_question: data.current ?? att.current_question, paused_at: now(), pause_reason: "connection", last_seen_at: now() }).eq("id",att.id).eq("status","in_progress");
+      // The timer stops at the last moment the device was in contact, so no time is lost while it was offline.
+      const frozenAt = att.last_seen_at ?? now();
+      await sb.from("exam_attempts").update({ answers: data.answers, current_question: data.current ?? att.current_question, paused_at: frozenAt, pause_reason: "connection", last_seen_at: now() }).eq("id",att.id).eq("status","in_progress");
+      await sb.from("exam_events").insert({ kind: "connection", student_code: st.student_code, round: s.current_round, message: `${st.full_name} lost connection or power — timer frozen, answers saved` });
       return { pauseReason: "connection", paused: true, status: "in_progress", violations, secondsLeft: left, examLive: s.exam_live, timeUp: false };
     }
     const timeUp = !paused && (left <= 0 || !s.exam_live);
