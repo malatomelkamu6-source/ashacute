@@ -242,6 +242,8 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
   const [paused, setPaused] = useState(false);
   const [pauseReason, setPauseReason] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
+  const offlineRef = useRef(false);
+  const goOffline = () => { offlineRef.current = true; setOffline(true); };
   const pausedRef = useRef(paused); pausedRef.current = paused;
   const [paper, setPaper] = useState<Paper | null>(null);
   const [err, setErr] = useState("");
@@ -265,20 +267,30 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
 
   const push = async (extra: { violation?: "fullscreen" | "focus"; submit?: boolean } = {}) => {
     if (endedRef.current) return;
+    if (typeof navigator !== "undefined" && !navigator.onLine) { goOffline(); return; }
     try {
-      const r = await sync({ data: { ...who, answers: answersRef.current, current: idxRef.current, ...extra } });
-      setErr(""); setOffline(false);
+      // After any loss of contact the server freezes the timer at the last moment it heard from this device.
+      const wasOffline = offlineRef.current;
+      const r = await sync({ data: { ...who, answers: answersRef.current, current: idxRef.current, ...(wasOffline ? { connectionLost: true } : extra) } });
+      setErr(""); offlineRef.current = false; setOffline(false);
       setViolations(r.violations); setLeft(r.secondsLeft); setPaused(r.paused); setPauseReason(r.pauseReason);
       if (r.status !== "in_progress") {
         setEnded(r.status === "blocked" ? "blocked" : r.timeUp ? "timeup" : "submitted");
         if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
       }
     } catch (e) {
-      const net = !navigator.onLine || !(e instanceof Error) || /fetch|network|load failed|failed to/i.test(e.message);
-      setOffline(net);
+      const net = !navigator.onLine || !(e instanceof Error) || /fetch|network|load failed|failed to|timeout|aborted/i.test(e.message);
+      if (net) goOffline();
       setErr(net ? "" : e instanceof Error ? e.message : "Could not save.");
     }
   };
+  // Detect power/internet loss the instant the browser reports it, not after the next save.
+  useEffect(() => {
+    const down = () => goOffline();
+    const up = () => { push(); };
+    window.addEventListener("offline", down); window.addEventListener("online", up);
+    return () => { window.removeEventListener("offline", down); window.removeEventListener("online", up); };
+  }, []);
 
   useEffect(() => {
     load({ data: who }).then((p) => {
@@ -291,9 +303,9 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
       if (p.attemptStatus === "blocked") setEnded("blocked"); else if (p.attemptStatus === "submitted") setEnded("submitted");
     }).catch((e) => setErr(e instanceof Error ? e.message : "Could not load the exam."));
   }, []);
-  useEffect(() => { const t = setInterval(() => { if (!pausedRef.current) setLeft((l) => Math.max(0, l - 1)); }, 1000); return () => clearInterval(t); }, []);
-  useEffect(() => { const t = setInterval(() => push(), 5000); return () => clearInterval(t); }, []);
-  useEffect(() => { if (paper && left === 0 && !ended) push(); }, [left, paper]);
+  useEffect(() => { const t = setInterval(() => { if (!pausedRef.current && !offlineRef.current) setLeft((l) => Math.max(0, l - 1)); }, 1000); return () => clearInterval(t); }, []);
+  useEffect(() => { const t = setInterval(() => push(), HEARTBEAT_MS); return () => clearInterval(t); }, []);
+  useEffect(() => { if (paper && left === 0 && !ended && !offline) push(); }, [left, paper]);
   useEffect(() => {
     let last = 0;
     const hit = (kind: "fullscreen" | "focus") => { if (endedRef.current || pausedRef.current || Date.now() - last < 1500) return; last = Date.now(); push({ violation: kind }); };
