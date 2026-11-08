@@ -13,7 +13,7 @@ Extract EVERY question in the exact order it appears, never skipping or merging 
 For each question:
 - text: the full question wording without its number (keep any passage, table text or formula written inline).
 - options: its choices in order (A, B, C, D ...) without the letter labels.
-- answer: the letter of the correct choice ONLY if the paper shows it (an answer key, a marked/underlined/bold choice or "Answer: X"); otherwise null. Never solve questions yourself.
+- answer: the letter of the correct choice ONLY if the paper itself states it for THAT question number (an answer key entry, a marked/underlined/bold choice or "Answer: X"). If the paper does not state it for that question, answer MUST be null, even if you know the answer. Never solve questions yourself; the teacher will fill in missing answers.
 - marks: the marks shown for the question, or 1 if not shown.
 Ignore headers, general instructions, school names and page numbers.`;
 
