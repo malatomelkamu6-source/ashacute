@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { teacherStream, canTakeStream, teacherCredentialKey, RESULT_PIN, hashResultPin, uploadSubjects } from "@/lib/admin-rules";
-import { canStartExam, personalDeadline, remainingSeconds, DISCONNECT_GRACE_SEC, admittedToRoom, activeBankIds } from "@/lib/exam-timing";
+import { canStartExam, personalDeadline, remainingSeconds, DISCONNECT_GRACE_SEC, admittedToRoom, activeBankIds, HELP_COOLDOWN_SEC, helpMessage } from "@/lib/exam-timing";
 import { normalizeName, requirePasscode, shouldBlock, shuffle, subjectsFor } from "@/lib/identity";
 
 async function admin() {

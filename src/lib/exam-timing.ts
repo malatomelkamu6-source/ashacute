@@ -23,3 +23,9 @@ export function backOnline(lastSeen: string | null, pausedAt: string | null, tim
 
 export function admittedToRoom(code: string, selected: string[] | null) { return selected === null || selected.includes(code); }
 export function activeBankIds(s: { active_bank_id: string | null; social_bank_id: string | null }) { return [s.active_bank_id, s.social_bank_id].filter((id): id is string => !!id); }
+
+/** Taps on the exam Help button within this many seconds count as one request. */
+export const HELP_COOLDOWN_SEC = 30;
+export function helpMessage(p: { name: string; code: string; grade: string; section: string; stream: string; subject: string; question?: number }) {
+  return `${p.name} (${p.code}) needs help · Grade ${p.grade}${p.section} · ${p.stream} · ${p.subject}${p.question ? ` · on question ${p.question}` : ""}`;
+}
