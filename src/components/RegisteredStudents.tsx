@@ -3,14 +3,16 @@ import { useServerFn } from "@tanstack/react-start";
 import * as XLSX from "xlsx";
 import { ScanFace, Trash2, RefreshCw, Pencil, Download, LockKeyhole, Search, X, Save, Users, BookOpen, Copy, BadgeCheck, KeyRound, Upload, UserPlus, RotateCcw } from "lucide-react";
 import { Btn, Avatar } from "@/components/Shell";
-import { adminDirectory, adminDeleteStudent, adminEditName, adminSetRegistration, adminUploadRoster, adminAddRosterStudent, adminResetFace, adminDeletePerson, adminEditTeacher } from "@/lib/students.functions";
-import { academicYear, SUBJECTS, type TeacherDetails } from "@/lib/admin-rules";
+import { adminDirectory, adminDeleteStudent, adminEditName, adminSetRegistration, adminUploadRoster, adminAddRosterStudent, adminResetFace, adminDeletePerson, adminEditTeacher, adminResetResultPin, adminSetStaffVisibility } from "@/lib/students.functions";
+import { academicYear, SUBJECTS, STAFF_PAGES, RESULT_PIN, type TeacherDetails } from "@/lib/admin-rules";
+import { EyeOff, Eye } from "lucide-react";
 import { adminResetStaffPassword } from "@/lib/exam.functions";
 import { matchesPerson } from "@/lib/results";
 import { TeacherRosterTools } from "@/components/TeacherRosterTools";
 import { Toggle } from "@/components/Shell";
 
 type Directory = Awaited<ReturnType<typeof adminDirectory>>;
+const PAGE_LABEL: Record<string, string> = { director: "Director", "it-admin": "IT Admin", teacher: "Teachers" };
 type Person = { verified?: boolean; id: string; name: string; grade: string; section: string; stream: string; gender: string; subjects: string[]; photoUrl: string | null; createdAt: string | null; target: "roster" | "registered"; kind: "student" | "teacher"; batch?: string | undefined };
 const showDate = (v: string | null, time = false) => v ? new Date(v).toLocaleString(undefined, time ? { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" } : { year: "numeric", month: "short", day: "numeric" }) : "—";
 type RosterRow = { full_name: string; grade: string; section: string; stream: "Natural Science" | "Social Science"; gender: "M" | "F" };
@@ -74,6 +76,17 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
   const removePerson = useServerFn(adminDeletePerson);
   const editTeacher = useServerFn(adminEditTeacher);
   const [details, setDetails] = useState<TeacherDetails | null>(null);
+  const resetPin = useServerFn(adminResetResultPin);
+  const setVisibility = useServerFn(adminSetStaffVisibility);
+  const [pinFor, setPinFor] = useState<Person | null>(null);
+  const [newPin, setNewPin] = useState("");
+  const hidden = directory.hiddenStaffRoles ?? [];
+  const toggleHidden = async (page: (typeof STAFF_PAGES)[number], hide: boolean) => {
+    const next = hide ? [...new Set([...hidden, page])] : hidden.filter((x) => x !== page);
+    setError(""); setMessage("");
+    try { await setVisibility({ data: { passcode, hidden: next as (typeof STAFF_PAGES)[number][] } }); setDirectory({ ...directory, hiddenStaffRoles: next }); setMessage(hide ? `${PAGE_LABEL[page]} is now hidden. Open it with its direct link: ${window.location.origin}/${page}` : `${PAGE_LABEL[page]} is visible on the home page again.`); }
+    catch (e) { setError(e instanceof Error ? e.message : "Could not change page visibility."); }
+  };
   const people: Person[] = view === "registered" ? directory.registered.map((s) => ({ ...s, subjects: [], target: "registered", kind: "student", batch: directory.roster.find((r) => r.id === s.id)?.batch })) : directory.roster.filter((r) => r.kind === (view === "teachers" ? "teacher" : "student")).map((r) => { const reg = directory.registered.find((x) => x.id === r.id); return { id: r.id, name: r.full_name, grade: r.grade, section: r.section, stream: r.stream, gender: r.gender, subjects: r.subjects, photoUrl: reg?.photoUrl ?? null, verified: !!reg?.verified, createdAt: reg?.createdAt ?? null, target: "roster", kind: r.kind === "teacher" ? "teacher" : "student", batch: r.batch }; });
   const deletePerson = async (p: Person) => {
     if (!confirm(p.kind === "teacher" ? `Delete ${p.name} from the teacher list completely? Their question papers stay so saved marks are kept.` : `Delete ${p.name} (${p.id}) from the school list completely? Their registration, photo and all exam marks are permanently removed.`)) return;
@@ -134,6 +147,17 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
         finally { setBusy(false); }
       }}><KeyRound className="h-4 w-4" />Reset teacher</Btn>
       {staffMsg && <span role="status" className="w-full font-mono text-sm text-accent">{staffMsg}</span>}
+    </div>
+    <div className="mb-6 rounded-xl border border-border p-4">
+      <div className="mb-1 flex items-center gap-2 text-sm font-semibold"><EyeOff className="h-4 w-4 text-primary" />Hide staff pages</div>
+      <p className="mb-3 text-xs text-muted-foreground">Hidden pages disappear from the home page and every menu. They still open from their direct link (for example /director).</p>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {STAFF_PAGES.map((page) => { const isHidden = hidden.includes(page); return (
+          <div key={page} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-secondary/30 p-3">
+            <div className="min-w-0"><div className="flex items-center gap-1.5 text-sm font-medium">{isHidden ? <EyeOff className="h-3.5 w-3.5 text-warning" /> : <Eye className="h-3.5 w-3.5 text-accent" />}{PAGE_LABEL[page]}</div><div className="break-all font-mono text-xs text-muted-foreground">/{page}</div></div>
+            <Toggle label={`Hide ${PAGE_LABEL[page]}`} on={isHidden} onChange={(v) => toggleHidden(page, v)} />
+          </div>); })}
+      </div>
     </div>
     <div role="tablist" aria-label="School directory" className="mb-5 flex flex-wrap gap-2">
       {([{ key: "registered", label: "Registered students", icon: ScanFace }, { key: "students", label: "Student List", icon: Users }, { key: "teachers", label: "Teachers", icon: BookOpen }] as const).map((t) => <Btn key={t.key} role="tab" aria-selected={view === t.key} variant={view === t.key ? "primary" : "ghost"} onClick={() => { setView(t.key); setSelected(null); setQuery(""); setStream("all"); setMessage(""); }}><t.icon className="h-4 w-4" />{t.label}</Btn>)}
@@ -210,6 +234,7 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
               catch (e) { setError(e instanceof Error ? e.message : "Could not reset verification."); }
               finally { setBusy(false); }
             }}><RotateCcw className="h-4 w-4" />Reset face verification</Btn>
+            <Btn variant="ghost" disabled={busy} onClick={() => { setPinFor(picked); setNewPin(""); setError(""); setMessage(""); }}><KeyRound className="h-4 w-4" />Reset result passcode</Btn>
             <Btn variant="danger" disabled={busy} onClick={async () => {
               if (!confirm(`Clear ${picked.name}'s registration photo? Their school identity and saved marks will remain.`)) return;
               setBusy(true); setError("");
@@ -221,6 +246,22 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
         </>}
       </aside>
     </div>
+    {pinFor && <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="pin-title">
+      <form className="tile w-full max-w-sm space-y-4" onSubmit={async (e) => {
+        e.preventDefault(); setError("");
+        if (!RESULT_PIN.test(newPin)) return setError("The passcode must be 4 to 6 numbers.");
+        setBusy(true);
+        try { await resetPin({ data: { passcode, id: pinFor.id, pin: newPin } }); setMessage(`New result passcode for ${pinFor.name}: ${newPin} — give it to the student now.`); setPinFor(null); setNewPin(""); }
+        catch (e) { setError(e instanceof Error ? e.message : "Could not reset the passcode."); }
+        finally { setBusy(false); }
+      }}>
+        <div className="flex items-center"><h2 id="pin-title" className="flex-1 text-lg font-semibold">Reset result passcode</h2><Btn type="button" variant="ghost" aria-label="Cancel passcode reset" className="px-2" disabled={busy} onClick={() => setPinFor(null)}><X className="h-4 w-4" /></Btn></div>
+        <p className="text-sm text-muted-foreground">{pinFor.name} <span className="font-mono">({pinFor.id})</span> forgot their passcode. Type a new one (4–6 numbers) and give it to them. The old passcode stops working.</p>
+        <input autoFocus aria-label="New result passcode" className="field text-center font-mono text-lg tracking-[0.4em]" inputMode="numeric" maxLength={6} placeholder="e.g. 4821" value={newPin} onChange={(e) => setNewPin(e.target.value.replace(/\D/g, "").slice(0, 6))} required />
+        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        <Btn className="w-full" disabled={busy || newPin.length < 4}><KeyRound className="h-4 w-4" />{busy ? "Saving…" : "Save new passcode"}</Btn>
+      </form>
+    </div>}
     {editing && <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="edit-title">
       <form className="tile w-full max-w-sm space-y-4" onSubmit={async (e) => {
         e.preventDefault(); setBusy(true); setError("");
