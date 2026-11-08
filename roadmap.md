@@ -48,4 +48,4 @@
 - [x] IT Admin: edit student details (class, stream, gender, batch, registered date)
 - [x] Director: "Delete all" alerts button; header icon changed
 - [x] Exam stays fullscreen until it ends (no pop-ups that exit it, tap returns to fullscreen, works on every device)
-- [ ] Exam: questions cannot be selected or copied
+- [x] Exam: questions cannot be selected or copied
