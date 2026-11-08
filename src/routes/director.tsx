@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import * as XLSX from "xlsx";
-import { Power, Megaphone, Timer, Table2, KeyRound, ListChecks, Plus, Radio, UserCheck, AlertTriangle, Layers, Trash2, CalendarDays, Download, Pause, Play, Search, BarChart3, RotateCcw, Trophy, Medal, Award, WifiOff, Wifi, Settings, X } from "lucide-react";
+import { Power, Megaphone, Timer, Table2, KeyRound, ListChecks, Plus, Radio, UserCheck, AlertTriangle, Layers, Trash2, CalendarDays, Download, Pause, Play, Search, BarChart3, RotateCcw, Trophy, Medal, Award, WifiOff, Wifi, Settings, X, Users, BookOpenCheck, DoorClosed, CheckCircle2 } from "lucide-react";
 import logo from "@/assets/logo.jpg.asset.json";
 import { Shell, Panel, Toggle, Btn } from "@/components/Shell";
 import { directorDashboard, directorUpdate, directorClock, directorNewRound, directorReadmit, directorChangePassword, directorRemove, directorRemoveBank, directorResetResults, directorStudentTime, directorAwardFlag } from "@/lib/exam.functions";
@@ -78,18 +78,24 @@ function Console({ pass, onPass }: { pass: string; onPass: (p: string) => void }
   const notStarted = d.participationStudents.filter((x) => !attemptBy.has(x.student_code));
   const blocked = d.attempts.filter((a) => a.status === "blocked");
   const nameOf = (c: string) => d.students.find((x) => x.student_code === c)?.full_name ?? c;
+  const bankTitle = (id: string | null) => (id ? d.banks.find((b) => b.id === id)?.title ?? null : null);
+  const isActive = (id: string) => s.activeBankId === id || s.socialBankId === id;
+  const activeFor = (stream: string) => (stream === "Social Science" ? s.socialBankId : s.activeBankId);
 
   return (
     <Shell title="Director Console" subtitle={`Round ${s.round} · Burka Harbu Special Secondary School`}>
-      <div className="mb-4 flex justify-end">
-        <Btn variant="ghost" title="Settings" aria-label="Open settings" onClick={() => setShowSettings(true)}><Settings className="h-4 w-4" />Settings</Btn>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-border bg-secondary/40 px-3 py-1 text-xs text-muted-foreground">Natural: <span className="font-semibold text-foreground">{bankTitle(s.activeBankId) ?? "no paper"}</span></span>
+        <span className="rounded-full border border-border bg-secondary/40 px-3 py-1 text-xs text-muted-foreground">Social: <span className="font-semibold text-foreground">{bankTitle(s.socialBankId) ?? "no paper"}</span></span>
+        <button type="button" title="Settings" aria-label="Open settings" onClick={() => setShowSettings(true)} className="ml-auto flex h-10 w-10 items-center justify-center rounded-full border border-border bg-secondary/40 text-primary transition hover:rotate-45 hover:bg-secondary"><Settings className="h-5 w-5" /></button>
       </div>
-      {showSettings && <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Director settings" onClick={(e) => e.target === e.currentTarget && setShowSettings(false)}>
-        <div className="glass mt-10 w-full max-w-lg space-y-4 p-5">
+      {showSettings && <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 p-3 backdrop-blur-sm sm:p-4" role="dialog" aria-modal="true" aria-label="Director settings" onClick={(e) => e.target === e.currentTarget && setShowSettings(false)}>
+        <div className="glass mt-4 w-full max-w-lg space-y-4 p-4 sm:mt-10 sm:p-5">
           <div className="flex items-center gap-2"><Settings className="h-5 w-5 text-primary" /><h2 className="text-lg font-semibold">Settings</h2><button type="button" aria-label="Close settings" className="ml-auto rounded-lg p-1 text-muted-foreground hover:text-foreground" onClick={() => setShowSettings(false)}><X className="h-5 w-5" /></button></div>
           <section className="space-y-4 rounded-xl border border-border p-4">
-            <Row label="SAT subject" desc={s.satEnabled ? "SAT included — totals are out of 600" : "SAT not offered — totals are out of 500"}><Toggle label="SAT enabled" on={s.satEnabled} onChange={(v) => act(() => update({ data: { passcode: pass, satEnabled: v } }))} /></Row>
-            <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+            <Row label={<span className="flex items-center gap-1.5"><BookOpenCheck className="h-3.5 w-3.5" />SAT subject</span>} desc={s.satEnabled ? "SAT included — totals are out of 600" : "SAT not offered — totals are out of 500"}><Toggle label="SAT enabled" on={s.satEnabled} onChange={(v) => act(() => update({ data: { passcode: pass, satEnabled: v } }))} /></Row>
+            <Row label={<span className="flex items-center gap-1.5"><DoorClosed className="h-3.5 w-3.5" />Auto-close when all submit</span>} desc={s.autoClose ? "The exam closes by itself once every admitted student has submitted" : "The exam stays open until you close it or the schedule ends"}><Toggle label="Auto-close when all submit" on={s.autoClose} onChange={(v) => act(() => update({ data: { passcode: pass, autoClose: v } }))} /></Row>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
               <div><div className="text-sm font-medium">Exam round</div><div className="text-xs text-muted-foreground">Currently Round {s.round}. Old rounds are kept.</div></div>
               <Btn variant="ghost" onClick={() => confirm(`Close Round ${s.round} and start Round ${s.round + 1}?`) && act(() => newRound({ data: { passcode: pass } }))}><Layers className="h-4 w-4" />New round</Btn>
             </div>
