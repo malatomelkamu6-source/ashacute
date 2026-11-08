@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Crown, Cpu, BookOpen, GraduationCap } from "lucide-react";
 import logo from "@/assets/logo.jpg.asset.json";
-import { HelpLink } from "@/components/Shell";
+import { HelpLink, visibleRoles } from "@/components/Shell";
+import { usePublicState } from "@/lib/live";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,15 +26,18 @@ const roles = [
 ] as const;
 
 function Index() {
+  const { data } = usePublicState();
+  const shown = visibleRoles(roles, data?.hiddenStaffRoles);
+  const cols = shown.length >= 4 ? "md:grid-cols-4" : shown.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2";
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:py-12">
       <div className="flex flex-col items-center text-center">
-        <img src={logo.url} alt="Burka Harbu Special Secondary School logo" className="h-40 w-40 rounded-full ring-2 ring-primary/50 glow" />
-        <h1 className="mt-6 text-3xl font-bold md:text-4xl">Burka Harbu <span className="text-accent">Special Secondary School</span></h1>
+        <img src={logo.url} alt="Burka Harbu Special Secondary School logo" className="h-28 w-28 rounded-full ring-2 ring-primary/50 glow sm:h-40 sm:w-40" />
+        <h1 className="mt-6 text-2xl font-bold sm:text-3xl md:text-4xl">Burka Harbu <span className="text-accent">Special Secondary School</span></h1>
         <p className="mt-3 text-muted-foreground">Grade 12 Exam Portal</p>
       </div>
-      <div className="mx-auto mt-10 grid max-w-xl grid-cols-2 gap-4 md:max-w-none md:grid-cols-4">
-        {roles.map((r) => (
+      <div className={`mx-auto mt-10 grid max-w-xl grid-cols-2 gap-3 sm:gap-4 md:max-w-none ${cols} ${shown.length === 1 ? "max-w-xs grid-cols-1" : ""}`}>
+        {shown.map((r) => (
           <Link key={r.to} to={r.to} className="tile tile-hover">
             <span className="tile-icon"><r.icon className="h-5 w-5" /></span>
             <h2 className="mt-4 text-lg font-semibold">{r.label}</h2>
