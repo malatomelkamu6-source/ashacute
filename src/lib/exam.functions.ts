@@ -98,6 +98,8 @@ export const getPublicState = createServerFn({ method: "GET" }).handler(async ()
 });
 
 /* ---------------- Director ---------------- */
+// With Auto close on, the Director only opens the session; it closes itself after every admitted student submits.
+const AUTO_CLOSE_ONLY = "Auto close is on, so the exam closes by itself after every admitted student submits. To close it yourself, turn Auto close off in Settings first.";
 async function dir(p: string) {
   requirePasscode(p, await staffPasscode("director"), "Director");
 }
@@ -158,6 +160,7 @@ export const directorUpdate = createServerFn({ method: "POST" })
     const sb = await admin();
     const s = await settings();
     if (s.auto_schedule && data.examLive !== undefined) throw new Error("Turn Auto off before manually opening or closing the exam.");
+    if (data.examLive === false && s.exam_live && s.auto_close) throw new Error(AUTO_CLOSE_ONLY);
     if (data.autoSchedule && (!activeBankIds(s).length || !s.scheduled_start || !s.scheduled_close || Date.parse(s.scheduled_close) <= Date.now())) throw new Error("Choose a paper and save a future schedule before enabling Auto.");
     let chosenStream: string | null = null;
     if (data.activeBankId) {
@@ -200,6 +203,7 @@ export const directorClock = createServerFn({ method: "POST" })
     const sb = await admin();
     const s = await settings();
     if (s.auto_schedule && data.action !== "extend") throw new Error("Turn Auto off before manual exam control.");
+    if (data.action === "stop" && s.exam_live && s.auto_close) throw new Error(AUTO_CLOSE_ONLY);
     if (data.action === "extend") {
       if (!s.exam_live) throw new Error("Open the session before adding minutes.");
       await settleAttempts();
@@ -307,7 +311,7 @@ export const teacherScanPaper = createServerFn({ method: "POST" })
 /* ---------------- Student exam ---------------- */
 async function student(who: { name: string; id: string; token: string }) {
   const sb = await admin();
-  const { data } = await sb.from("registered_students").select("id,student_code,full_name,stream,face_verified,session_token").eq("student_code", who.id.toUpperCase()).maybeSingle();
+  const { data } = await sb.from("registered_students").select("id,student_code,full_name,stream,grade,section,face_verified,session_token").eq("student_code", who.id.toUpperCase()).maybeSingle();
   if (!data || normalizeName(data.full_name) !== normalizeName(who.name)) throw new Error("Please sign in again.");
   if (!data.face_verified) throw new Error("Your face verification was reset. Please register again.");
   if (data.session_token !== who.token) throw new Error("You were signed in on another device. Please sign in again.");
@@ -422,6 +426,24 @@ export const studentFlag = createServerFn({ method: "POST" })
       message: `${bank.subject} · "${q.text.slice(0, 80)}" flagged${data.note ? `: ${data.note}` : ""}`,
     });
     return { ok: true };
+  });
+
+/** One tap on the exam's Help button tells the Director who needs help and where they are. */
+export const studentHelp = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => who.extend({ question: z.number().int().min(1).max(1000).optional() }).parse(d))
+  .handler(async ({ data }) => {
+    const st = await student(data);
+    const { s, bank } = await activeContext(st.stream);
+    const sb = await admin();
+    const { data: att } = await sb.from("exam_attempts").select("id,status").eq("round", s.current_round).eq("bank_id", bank.id).eq("student_code", st.student_code).maybeSingle();
+    if (!att || att.status !== "in_progress") throw new Error("Help can only be asked during your exam.");
+    // Repeated taps within a short time count as one request.
+    const since = new Date(Date.now() - HELP_COOLDOWN_SEC * 1000).toISOString();
+    const { data: recent } = await sb.from("exam_events").select("id").eq("kind", "help").eq("student_code", st.student_code).is("dismissed_at", null).gte("created_at", since).limit(1);
+    if (recent?.length) return { ok: true, repeated: true };
+    const { error } = await sb.from("exam_events").insert({ kind: "help", student_code: st.student_code, round: s.current_round, bank_id: bank.id, message: helpMessage({ name: st.full_name, code: st.student_code, grade: st.grade, section: st.section, stream: st.stream, subject: bank.subject, question: data.question }) });
+    if (error) throw new Error("Could not send your help request. Raise your hand.");
+    return { ok: true, repeated: false };
   });
 
 export const studentResults = createServerFn({ method: "POST" })
