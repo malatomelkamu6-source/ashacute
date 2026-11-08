@@ -2,10 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { FileUp, PenSquare, Send, Trash2, Plus, Lock, Save, Flag, KeyRound, LogOut, Table2, Search } from "lucide-react";
+import { FileUp, PenSquare, Send, Trash2, Plus, Lock, Save, Flag, KeyRound, LogOut, Table2, Search, Loader2 } from "lucide-react";
+import { PAPER_ACCEPT, MAX_PAPER_BYTES, type ScannedQuestion } from "@/lib/paper";
 import logo from "@/assets/logo.jpg.asset.json";
 import { Shell, Panel, Btn } from "@/components/Shell";
-import { listTeachers, teacherDashboard, teacherSaveBank, teacherRemoveBank, teacherRemoveFlag, teacherChangePassword, teacherMarks, type Question } from "@/lib/exam.functions";
+import { listTeachers, teacherDashboard, teacherSaveBank, teacherRemoveBank, teacherRemoveFlag, teacherChangePassword, teacherMarks, teacherScanPaper, type Question } from "@/lib/exam.functions";
 
 export const Route = createFileRoute("/teacher")({
   head: () => ({
@@ -123,7 +124,7 @@ function Workspace({ auth, onOut, onPassword }: { auth: { tid: string; pw: strin
               {!data.flags.length && <li className="text-muted-foreground">No flags from students.</li>}
             </ul>
           </Panel>
-          <Importer onImport={(title, qs) => newBank(title, qs)} />
+          <Importer auth={auth} onImport={(title, qs) => { newBank(title, qs); setMsg(`${qs.length} questions placed in a new bank. Check them, then press “Submit to Director”.`); }} />
           <TeacherPassword tid={auth.tid} onChanged={onPassword} />
         </div>
         <div className="lg:col-span-2">{draft ? <Editor draft={draft} setDraft={setDraft} onSave={persist} /> : <Panel title="Editor"><p className="text-sm text-muted-foreground">Create a bank to begin.</p></Panel>}</div>
@@ -133,39 +134,69 @@ function Workspace({ auth, onOut, onPassword }: { auth: { tid: string; pw: strin
   );
 }
 
-function parseQuestions(text: string): Question[] {
-  const blocks = text.split(/\n\s*(?=\d+[.)]\s)/);
-  const out: Question[] = [];
-  for (const b of blocks) {
-    const m = b.match(/^\s*\d+[.)]\s*([\s\S]*?)\n\s*A[.)]\s*(.+)\n\s*B[.)]\s*(.+)\n\s*C[.)]\s*(.+)\n\s*D[.)]\s*(.+)(?:\n\s*Answer\s*[:\-]\s*([ABCD]))?/i);
-    if (m) out.push({ id: `q${Date.now()}${out.length}`, text: m[1]!.trim(), options: [m[2]!.trim(), m[3]!.trim(), m[4]!.trim(), m[5]!.trim()], answer: m[6] ? "ABCD".indexOf(m[6].toUpperCase()) : 0, marks: 1 });
-  }
-  return out;
-}
+const readBase64 = (f: File) => new Promise<string>((res, rej) => {
+  const r = new FileReader();
+  r.onload = () => res(String(r.result).split(",")[1] ?? "");
+  r.onerror = () => rej(new Error("Could not open the file."));
+  r.readAsDataURL(f);
+});
+const IMAGE_MIMES: Record<string, "image/png" | "image/jpeg" | "image/webp"> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp" };
 
-function Importer({ onImport }: { onImport: (title: string, q: Question[]) => void }) {
-  const [preview, setPreview] = useState<{ name: string; text: string; qs: Question[]; pdfUrl?: string } | null>(null);
+function Importer({ auth, onImport }: { auth: { tid: string; pw: string }; onImport: (title: string, q: Question[]) => void }) {
+  const scan = useServerFn(teacherScanPaper);
+  const [busy, setBusy] = useState(""); const [err, setErr] = useState("");
+  const [preview, setPreview] = useState<{ name: string; qs: ScannedQuestion[] } | null>(null);
   const load = async (f: File) => {
-    if (f.type === "application/pdf") {
-      setPreview({ name: f.name, text: "", qs: [], pdfUrl: URL.createObjectURL(f) });
-    } else {
-      const text = await f.text();
-      setPreview({ name: f.name, text, qs: parseQuestions(text) });
-    }
+    setErr(""); setPreview(null);
+    const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!f.size) return setErr("This file is empty.");
+    if (f.size > MAX_PAPER_BYTES) return setErr("This file is too large. Please upload a paper under 15 MB.");
+    if (ext === "doc") return setErr("Old Word (.doc) files can't be read. In Word, choose “Save As” → .docx or PDF, then upload again.");
+    try {
+      setBusy("Opening the paper…");
+      let payload: { mime: "application/pdf" | "image/png" | "image/jpeg" | "image/webp" | "text/plain"; base64?: string; text?: string };
+      if (ext === "pdf") payload = { mime: "application/pdf", base64: await readBase64(f) };
+      else if (IMAGE_MIMES[ext]) payload = { mime: IMAGE_MIMES[ext]!, base64: await readBase64(f) };
+      else if (ext === "docx") {
+        const mammoth = await import("mammoth");
+        const { value } = await mammoth.extractRawText({ arrayBuffer: await f.arrayBuffer() });
+        payload = { mime: "text/plain", text: value };
+      } else if (ext === "txt" || ext === "md") payload = { mime: "text/plain", text: await f.text() };
+      else throw new Error("Please upload a PDF, Word (.docx), photo (JPG/PNG) or text file.");
+      if (payload.text !== undefined && !payload.text.trim()) throw new Error("No text was found in this file. If it is a scanned paper, upload it as a PDF or photo instead.");
+      setBusy("Reading every question and choice… this can take up to a minute for long papers.");
+      const r = await scan({ data: { passcode: auth.pw, teacherId: auth.tid, fileName: f.name, ...payload } });
+      setPreview({ name: f.name, qs: r.questions });
+    } catch (e) { setErr(e instanceof Error ? e.message : "Could not read this paper."); }
+    finally { setBusy(""); }
   };
+  const missing = preview ? preview.qs.filter((q) => q.answer === null).length : 0;
   return (
     <Panel title="Exam paper importer" icon={<FileUp className="h-4 w-4" />}>
-      <label className="block cursor-pointer rounded-xl border-2 border-dashed border-border p-5 text-center text-sm hover:border-primary">
-        Upload PDF or text exam paper
-        <input type="file" accept=".pdf,.txt,.md" hidden onChange={(e) => e.target.files?.[0] && load(e.target.files[0])} />
+      <label className={`block rounded-xl border-2 border-dashed border-border p-5 text-center text-sm ${busy ? "cursor-wait opacity-60" : "cursor-pointer hover:border-primary"}`}>
+        {busy ? <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin text-primary" />{busy}</span> : <>Upload exam paper<span className="mt-1 block text-xs text-muted-foreground">PDF, Word (.docx), photo or text</span></>}
+        <input type="file" accept={PAPER_ACCEPT} hidden disabled={!!busy} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) load(f); }} />
       </label>
-      <p className="mt-2 text-xs text-muted-foreground">Text format: “1. Question” then A–D options and “Answer: B”.</p>
+      <p className="mt-2 text-xs text-muted-foreground">The system reads each question and puts its choices A–D in their places. Answers are filled in when the paper shows them.</p>
+      {err && <p role="alert" className="mt-2 text-xs text-destructive">{err}</p>}
       {preview && (
         <div className="mt-3 space-y-2">
-          <div className="text-xs font-medium">{preview.name}</div>
-          {preview.pdfUrl ? <iframe title="PDF preview" src={preview.pdfUrl} className="h-64 w-full rounded-lg border border-border" /> : <pre className="max-h-40 overflow-auto rounded-lg bg-muted p-2 text-xs">{preview.text.slice(0, 1500)}</pre>}
-          <div className="text-xs text-accent">{preview.qs.length} questions extracted{preview.pdfUrl ? " — add them manually in the editor while viewing the PDF" : ""}</div>
-          <Btn className="w-full" onClick={() => { onImport(preview.name.replace(/\.\w+$/, ""), preview.qs); setPreview(null); }}>Create bank from paper</Btn>
+          <div className="break-words text-xs font-medium">{preview.name}</div>
+          <div className="text-xs text-accent">{preview.qs.length} questions found</div>
+          {missing > 0 && <p className="rounded-lg border border-warning/40 bg-warning/10 p-2 text-xs text-warning">{missing} question(s) have no answer on the paper. Choose the correct answer for them in the editor before submitting.</p>}
+          <ol className="max-h-56 space-y-2 overflow-y-auto rounded-lg border border-border p-2 text-xs">
+            {preview.qs.map((q, i) => (
+              <li key={i}>
+                <div className="break-words font-medium"><span className="text-primary">{i + 1}.</span> {q.text}</div>
+                <div className="mt-0.5 grid gap-x-3 sm:grid-cols-2">{q.options.map((o, k) => o && <span key={k} className={`break-words ${q.answer === k ? "text-accent" : "text-muted-foreground"}`}>{"ABCD"[k]}. {o}</span>)}</div>
+              </li>
+            ))}
+          </ol>
+          <Btn className="w-full" onClick={() => {
+            const stamp = Date.now();
+            onImport(preview.name.replace(/\.\w+$/, "").slice(0, 120), preview.qs.map((q, i) => ({ id: `q${stamp}${i}`, text: q.text, options: q.options, answer: q.answer ?? 0, marks: q.marks })));
+            setPreview(null);
+          }}>Create bank from paper</Btn>
         </div>
       )}
     </Panel>

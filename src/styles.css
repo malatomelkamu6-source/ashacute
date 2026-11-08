@@ -174,8 +174,10 @@
   box-shadow: 0 10px 30px -20px oklch(0 0 0 / 0.8);
   position: relative;
   &::after {
-    content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
-    background: var(--color-primary); opacity: .6;
+    content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+    background: oklch(1 0 0 / 0.16);
+    box-shadow: 0 1px 6px oklch(1 0 0 / 0.06);
+    backdrop-filter: blur(8px);
   }
 }
 @utility logo-ring {
