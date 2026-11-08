@@ -355,14 +355,15 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
   if (!cur) return null;
   const answeredCount = Object.keys(answers).length;
   return (
-    <div className="min-h-screen">
+    // The exam covers the whole screen on every device, including phones whose browser has no fullscreen mode.
+    <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-background">
       <div className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-3 py-2 sm:gap-4 sm:px-4 sm:py-3">
           <img src={logo.url} alt="" className="h-9 w-9 rounded-full" />
           <div className="text-sm"><div className="font-semibold">{paper.title}</div><div className="text-xs text-muted-foreground">{student.id} · {answeredCount}/{paper.paper.length} answered</div></div>
           <span className={`rounded-full border border-border px-2.5 py-1 font-mono text-sm font-bold lg:hidden ${left < 300 ? "text-destructive" : "text-primary"}`} aria-label="Time left">{fmt(left)}</span>
           <span className={`ml-auto flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${violations ? "border-destructive/50 text-destructive" : "border-accent/40 text-accent"}`}><AlertTriangle className="h-3.5 w-3.5" />{violations}/3 warnings</span>
-          <Btn variant="accent" onClick={() => confirm(`Submit now? ${paper.paper.length - answeredCount} unanswered.`) && push({ submit: true })}>Submit</Btn>
+          <Btn variant="accent" onClick={() => setAskSubmit(true)}>Submit</Btn>
         </div>
       </div>
       {paused && (
@@ -386,10 +387,33 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
           </div>
         </div>
       )}
-      {!isFs && !paused && (
-        <div className="mx-auto mt-4 flex max-w-6xl items-center gap-3 rounded-xl border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-          <AlertTriangle className="h-4 w-4" /> Fullscreen exited — the Director has been alerted.
-          <Btn variant="danger" className="ml-auto py-1 text-xs" onClick={() => document.documentElement.requestFullscreen().catch(() => {})}>Return to fullscreen</Btn>
+      {fsOk && !isFs && !paused && !offline && (
+        <div role="alertdialog" aria-modal="true" aria-labelledby="fs-title" className="fixed inset-0 z-40 flex items-center justify-center bg-background/95 p-4 backdrop-blur-sm">
+          <div className="glass max-w-sm p-6 text-center sm:p-8">
+            <Maximize className="mx-auto h-10 w-10 text-destructive" />
+            <h2 id="fs-title" className="mt-3 text-xl font-bold">Fullscreen exited</h2>
+            <p className="mt-2 text-sm text-muted-foreground">The exam must stay in fullscreen until it ends. Leaving it is reported to the Director. Your answers and time are safe.</p>
+            <Btn className="mt-5 w-full" onClick={() => enterFullscreen()}><Maximize className="h-4 w-4" />Return to fullscreen</Btn>
+          </div>
+        </div>
+      )}
+      {flagFor && (
+        <div role="dialog" aria-modal="true" aria-labelledby="flag-title" className="fixed inset-0 z-40 flex items-center justify-center bg-background/90 p-4 backdrop-blur-sm">
+          <div className="glass w-full max-w-sm p-6">
+            <h2 id="flag-title" className="flex items-center gap-2 text-lg font-bold"><Flag className="h-5 w-5 text-warning" />Report this question</h2>
+            <label className="mt-3 block text-sm text-muted-foreground" htmlFor="flag-note">What is wrong with it? (optional)</label>
+            <textarea id="flag-note" className="field mt-2 min-h-24" maxLength={300} value={flagNote} onChange={(e) => setFlagNote(e.target.value)} />
+            <div className="mt-4 flex gap-2"><Btn variant="ghost" className="flex-1" onClick={() => { setFlagFor(null); setFlagNote(""); }}>Cancel</Btn><Btn className="flex-1" onClick={sendFlag}>Send report</Btn></div>
+          </div>
+        </div>
+      )}
+      {askSubmit && (
+        <div role="dialog" aria-modal="true" aria-labelledby="submit-title" className="fixed inset-0 z-40 flex items-center justify-center bg-background/90 p-4 backdrop-blur-sm">
+          <div className="glass w-full max-w-sm p-6 text-center">
+            <h2 id="submit-title" className="text-lg font-bold">Submit your exam now?</h2>
+            <p className="mt-2 text-sm text-muted-foreground">{paper.paper.length - answeredCount} question(s) unanswered. You cannot change answers after submitting.</p>
+            <div className="mt-5 flex gap-2"><Btn variant="ghost" className="flex-1" onClick={() => setAskSubmit(false)}>Keep working</Btn><Btn variant="accent" className="flex-1" onClick={() => { setAskSubmit(false); push({ submit: true }); }}>Submit</Btn></div>
+          </div>
         </div>
       )}
       <div className="mx-auto grid max-w-6xl gap-4 px-3 py-4 sm:px-4 sm:py-6 lg:grid-cols-[1fr_260px]">
@@ -409,10 +433,7 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
             <Btn variant="ghost" disabled={idx === 0} onClick={() => setIdx(idx - 1)}><ChevronLeft className="h-4 w-4" />Prev</Btn>
-            <Btn variant="ghost" disabled={flagged.has(cur.id)} onClick={async () => {
-              const note = prompt("What is wrong with this question? (optional)") ?? undefined;
-              try { await flagFn({ data: { ...who, questionId: cur.id, note } }); setFlagged(new Set(flagged).add(cur.id)); } catch { setErr("Could not send the flag."); }
-            }}><Flag className={`h-4 w-4 ${flagged.has(cur.id) ? "text-warning" : ""}`} />{flagged.has(cur.id) ? "Reported" : "Report question"}</Btn>
+            <Btn variant="ghost" disabled={flagged.has(cur.id)} onClick={() => setFlagFor(cur.id)}><Flag className={`h-4 w-4 ${flagged.has(cur.id) ? "text-warning" : ""}`} />{flagged.has(cur.id) ? "Reported" : "Report question"}</Btn>
             <Btn className="ml-auto" disabled={idx === paper.paper.length - 1} onClick={() => setIdx(idx + 1)}>Next<ChevronRight className="h-4 w-4" /></Btn>
           </div>
         </div>
