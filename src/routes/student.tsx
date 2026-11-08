@@ -9,6 +9,7 @@ import { LiveCamera } from "@/components/LiveCamera";
 import { canTakeStream } from "@/lib/admin-rules";
 import { fmt } from "@/lib/identity";
 import { HEARTBEAT_MS } from "@/lib/exam-timing";
+import { enterFullscreen, exitFullscreen, inFullscreen, fullscreenSupported, FULLSCREEN_EVENTS } from "@/lib/fullscreen";
 import { usePublicState } from "@/lib/live";
 import { studentExam, studentSync, studentFlag, studentResults } from "@/lib/exam.functions";
 import { registerStudent, loginStudent, checkRegistrationName, studentPing, studentSignOut, type PublicStudent } from "@/lib/students.functions";
@@ -225,7 +226,7 @@ function ExamLobby({ onStart, stream }: { onStart: () => void; stream: string })
             {!st?.examLive ? <p className="flex items-center gap-2 text-sm text-destructive"><Lock className="h-4 w-4" />The exam session is closed</p>
               : !st.clockRunning ? <p className="text-center text-sm text-warning">New starts are outside the scheduled window. If you already started, you can continue.</p>
               : <p className="text-sm text-accent">The exam is open.</p>}
-            <Btn disabled={!ok} onClick={async () => { try { await document.documentElement.requestFullscreen(); } catch { /* blocked */ } onStart(); }}><Maximize className="h-4 w-4" />Enter fullscreen & begin</Btn>
+            <Btn disabled={!ok} onClick={async () => { await enterFullscreen(); onStart(); }}><Maximize className="h-4 w-4" />Enter fullscreen & begin</Btn>
           </div>
         </div>
       )}
@@ -253,6 +254,10 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
   const [violations, setViolations] = useState(0);
   const [left, setLeft] = useState(0);
   const [isFs, setIsFs] = useState(true);
+  const [fsOk, setFsOk] = useState(true);
+  const [flagFor, setFlagFor] = useState<string | null>(null);
+  const [flagNote, setFlagNote] = useState("");
+  const [askSubmit, setAskSubmit] = useState(false);
   const [ended, setEnded] = useState<null | "submitted" | "blocked" | "timeup">(null);
   const answersRef = useRef(answers); answersRef.current = answers;
   const endedRef = useRef(ended); endedRef.current = ended;
@@ -275,8 +280,9 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
       setErr(""); offlineRef.current = false; setOffline(false);
       setViolations(r.violations); setLeft(r.secondsLeft); setPaused(r.paused); setPauseReason(r.pauseReason);
       if (r.status !== "in_progress") {
-        setEnded(r.status === "blocked" ? "blocked" : r.timeUp ? "timeup" : "submitted");
-        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+        endedRef.current = r.status === "blocked" ? "blocked" : r.timeUp ? "timeup" : "submitted";
+        setEnded(endedRef.current);
+        exitFullscreen(); // the exam is over, so leaving fullscreen is no longer a violation
       }
     } catch (e) {
       const net = !navigator.onLine || !(e instanceof Error) || /fetch|network|load failed|failed to|timeout|aborted/i.test(e.message);
@@ -311,10 +317,26 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
     const hit = (kind: "fullscreen" | "focus") => { if (endedRef.current || pausedRef.current || offlineRef.current || Date.now() - last < 1500) return; last = Date.now(); push({ violation: kind }); };
     const blur = () => hit("focus");
     const vis = () => document.hidden && hit("focus");
-    const fs = () => { const on = !!document.fullscreenElement; setIsFs(on); if (!on) hit("fullscreen"); };
-    window.addEventListener("blur", blur); document.addEventListener("visibilitychange", vis); document.addEventListener("fullscreenchange", fs);
-    return () => { window.removeEventListener("blur", blur); document.removeEventListener("visibilitychange", vis); document.removeEventListener("fullscreenchange", fs); };
+    const supported = fullscreenSupported();
+    setFsOk(supported); setIsFs(!supported || inFullscreen());
+    const fs = () => { const on = inFullscreen(); setIsFs(on); if (!on) hit("fullscreen"); };
+    // Any tap while the exam runs puts the screen straight back into fullscreen (browsers only allow this from a tap).
+    const back = () => { if (supported && !endedRef.current && !inFullscreen()) enterFullscreen(); };
+    window.addEventListener("blur", blur); document.addEventListener("visibilitychange", vis);
+    FULLSCREEN_EVENTS.forEach((n) => document.addEventListener(n, fs));
+    document.addEventListener("pointerdown", back, true);
+    return () => {
+      window.removeEventListener("blur", blur); document.removeEventListener("visibilitychange", vis);
+      FULLSCREEN_EVENTS.forEach((n) => document.removeEventListener(n, fs));
+      document.removeEventListener("pointerdown", back, true);
+    };
   }, []);
+  const sendFlag = async () => {
+    const id = flagFor; if (!id) return;
+    setFlagFor(null);
+    try { await flagFn({ data: { ...who, questionId: id, note: flagNote.trim() || undefined } }); setFlagged((f) => new Set(f).add(id)); } catch { setErr("Could not send the flag."); }
+    setFlagNote("");
+  };
 
   if (ended) return (
     <div className="flex min-h-screen items-center justify-center p-4">
