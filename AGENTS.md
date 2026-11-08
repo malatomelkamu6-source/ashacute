@@ -52,9 +52,5 @@ use the editor.
 - Student result passcodes are stored only as a SHA-256 hash (`registered_students.results_pin_hash`, salted with the student code via `hashResultPin`); `studentResults` returns a locked state until the right passcode is sent, and students registered before passcodes existed set one on first unlock.
 - Teacher mark views (`teacherMarks`) are scoped server-side to the teacher's own subjects and `teacherStream`, across every paper of that subject, never other subjects.
 
-- Mathematics teachers may also upload and view SAT papers (`uploadSubjects`); a paper's `target_stream` comes from the teacher, so a Social Science teacher's SAT reaches only Social Science students.
-- One active paper per stream: `exam_settings.active_bank_id` (Natural) and `social_bank_id` (Social) can be live together; every exam call resolves the student's paper by stream.
 - `selected_student_codes` (NULL = everyone) is the exam-room list; only listed students may start. `apply_exam_schedule` closes the session (manual or Auto) once every admitted verified student has finished when `auto_close` is on, recording `auto_completed`.
-- Student devices heartbeat every `HEARTBEAT_MS`; the client freezes its timer the instant it detects offline and reports `connectionLost` on reconnect, and the server freezes the attempt at `last_seen_at` so no time is lost.
 - `hidden_staff_roles` hides staff pages from the home page and menus via `visibleRoles`; staff links render only after the setting loads, and direct links keep working.
-- Teacher paper import: the browser turns .docx/.txt into text (mammoth) and sends PDFs/photos as base64 to `teacherScanPaper`, which reads them through the AI gateway in `src/lib/paper.server.ts`; `normalizeScanned` in `src/lib/paper.ts` keeps an answer only when the paper shows proof of it, so the teacher fills in the rest before submitting.
