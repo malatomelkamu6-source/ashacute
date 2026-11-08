@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Crown, Cpu, BookOpen, GraduationCap, MessageCircle } from "lucide-react";
 import logo from "@/assets/logo.jpg.asset.json";
 import { usePublicState } from "@/lib/live";
+import { isPageVisible } from "@/lib/admin-rules";
 
 const roles = [
   { to: "/director", label: "Director", icon: Crown },
@@ -10,6 +11,11 @@ const roles = [
   { to: "/teacher", label: "Teacher", icon: BookOpen },
   { to: "/student", label: "Student", icon: GraduationCap },
 ] as const;
+
+/** Staff links appear only once the IT Admin's visibility setting is known, so hidden pages never flash into view. */
+export function visibleRoles<T extends { to: string }>(list: readonly T[], hidden: string[] | undefined) {
+  return list.filter((r) => r.to === "/student" || (hidden !== undefined && isPageVisible(r.to.slice(1), hidden)));
+}
 
 export function useNow(ms = 1000) {
   const [now, setNow] = useState(() => Date.now());
@@ -29,6 +35,7 @@ export function Shell({ children, title, subtitle, help = false }: { children: R
   const { data } = usePublicState();
   const live = !!data?.examLive;
   const published = !!data?.resultsPublished;
+  const shownRoles = visibleRoles(roles, data?.hiddenStaffRoles);
   return (
     <div className="relative min-h-screen">
       <img src={logo.url} alt="" aria-hidden className="pointer-events-none fixed left-1/2 top-1/2 -z-0 w-[560px] max-w-[80vw] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.05]" />
@@ -42,7 +49,7 @@ export function Shell({ children, title, subtitle, help = false }: { children: R
             </div>
           </Link>
           <nav className="ml-auto flex flex-wrap gap-1 rounded-full border border-border bg-secondary/50 p-1">
-            {roles.map((r) => (
+            {shownRoles.map((r) => (
               <Link key={r.to} to={r.to} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
                 activeProps={{ className: "bg-primary text-primary-foreground hover:text-primary-foreground" }}>
                 <r.icon className="h-3.5 w-3.5" /> {r.label}
