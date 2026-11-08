@@ -10,7 +10,9 @@ export function remainingSeconds(deadline: string | null, time = Date.now()) {
   return deadline ? Math.max(0, Math.ceil((Date.parse(deadline) - time) / 1000)) : 0;
 }
 /** A student's device that stops reporting for this long (power cut, lost internet) has its timer frozen. */
-export const DISCONNECT_GRACE_SEC = 10;
+export const DISCONNECT_GRACE_SEC = 6;
+/** How often an exam device reports to the server while the exam is open. */
+export const HEARTBEAT_MS = 2000;
 
 /** A connection-paused student is back online when their device reported again after the pause and within the last 20 seconds. */
 export function backOnline(lastSeen: string | null, pausedAt: string | null, time = Date.now()) {

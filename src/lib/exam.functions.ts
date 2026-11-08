@@ -375,7 +375,7 @@ export const studentSync = createServerFn({ method: "POST" })
       const frozenAt = att.last_seen_at ?? now();
       await sb.from("exam_attempts").update({ answers: data.answers, current_question: data.current ?? att.current_question, paused_at: frozenAt, pause_reason: "connection", last_seen_at: now() }).eq("id",att.id).eq("status","in_progress");
       await sb.from("exam_events").insert({ kind: "connection", student_code: st.student_code, round: s.current_round, message: `${st.full_name} lost connection or power — timer frozen, answers saved` });
-      return { pauseReason: "connection", paused: true, status: "in_progress", violations, secondsLeft: left, examLive: s.exam_live, timeUp: false };
+      return { pauseReason: "connection", paused: true, status: "in_progress", violations, secondsLeft: secondsLeft(att.deadline_at, Date.parse(frozenAt)), examLive: s.exam_live, timeUp: false };
     }
     const timeUp = !paused && (left <= 0 || !s.exam_live);
     if (shouldBlock(violations)) {
