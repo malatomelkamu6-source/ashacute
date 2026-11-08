@@ -9,7 +9,7 @@ import { Shell, Panel, Toggle, Btn } from "@/components/Shell";
 import { directorDashboard, directorUpdate, directorClock, directorNewRound, directorReadmit, directorChangePassword, directorRemove, directorRemoveBank, directorResetResults, directorStudentTime, directorAwardFlag } from "@/lib/exam.functions";
 import { backOnline } from "@/lib/exam-timing";
 import { subjectsFor, fmt } from "@/lib/identity";
-import { scoreBands, totalScore, maxTotal, rankRows } from "@/lib/results";
+import { scoreBands, totalScore, maxTotal, rankRows, matchesPerson } from "@/lib/results";
 
 export const Route = createFileRoute("/director")({
   head: () => ({
@@ -110,7 +110,7 @@ function Console({ pass, onPass }: { pass: string; onPass: (p: string) => void }
         <Panel title="Global switches" icon={<Power className="h-4 w-4" />}>
           <div className="space-y-4">
             <Row label="Auto schedule" desc={s.autoSchedule ? "Scheduled opening and closing enabled" : "Manual control"}><Toggle label="Auto schedule" on={s.autoSchedule} onChange={v => act(() => update({ data: { passcode: pass, autoSchedule: v } }))} /></Row>
-            <Row label="Exam session open" desc={s.examLive ? "Students can start" : "Closed — active exams auto-submit"}><Toggle label="Exam session open" on={s.examLive} onChange={(v) => !s.autoSchedule && act(() => update({ data: { passcode: pass, examLive: v } }))} /></Row>
+            <Row label="Exam session open" desc={s.examLive ? "Students can start" : s.autoCompleted ? "Closed automatically — every admitted student submitted" : "Closed — active exams auto-submit"}><Toggle label="Exam session open" on={s.examLive} onChange={(v) => !s.autoSchedule && act(() => update({ data: { passcode: pass, examLive: v } }))} /></Row>
             <Row label={<span className="flex items-center gap-1.5"><Megaphone className="h-3.5 w-3.5" />Publish results</span>} desc={s.resultsPublished ? "Scorecards visible" : "Scorecards hidden"}><Toggle label="Publish results" on={s.resultsPublished} onChange={(v) => act(() => update({ data: { passcode: pass, resultsPublished: v } }))} /></Row>
           </div>
         </Panel>
@@ -301,6 +301,61 @@ function ConnectionLost({ attempts, nameOf, live, onResume }: { attempts: ConnAt
         <Btn variant={on ? "accent" : "ghost"} className="py-1 text-xs" onClick={() => onResume([a.id])}><Play className="h-3.5 w-3.5" />Let them continue</Btn>
       </li>; })}
     </ul>}
+  </Panel>;
+}
+
+type RoomStudent = DirStudent & { face_verified: boolean };
+/** Exam room: only the students chosen here may start, so a class can sit the exam group by group. */
+function ExamRoom({ students, attempts, selected, live, autoSchedule, autoCompleted, onSave }: { students: RoomStudent[]; attempts: { student_code: string; status: string }[]; selected: string[] | null; live: boolean; autoSchedule: boolean; autoCompleted: boolean; onSave: (codes: string[] | null) => Promise<void> }) {
+  const [stream, setStream] = useState<string>("Natural Science");
+  const [section, setSection] = useState("all");
+  const [size, setSize] = useState(30);
+  const [q, setQ] = useState("");
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(selected ?? []));
+  const [dirty, setDirty] = useState(false);
+  const savedKey = (selected ?? []).join(",");
+  const [lastKey, setLastKey] = useState(savedKey);
+  if (!dirty && lastKey !== savedKey) { setLastKey(savedKey); setPicked(new Set(selected ?? [])); }
+  const status = new Map(attempts.map((a) => [a.student_code, a.status]));
+  const verified = students.filter((x) => x.face_verified);
+  const inStream = verified.filter((x) => x.stream === stream);
+  const sections = [...new Set(inStream.map((x) => x.section))].sort();
+  const list = inStream.filter((x) => (section === "all" || x.section === section) && matchesPerson(q, { name: x.full_name, id: x.student_code }));
+  const change = (next: Set<string>) => { setPicked(next); setDirty(true); };
+  const toggle = (code: string) => { const n = new Set(picked); if (n.has(code)) n.delete(code); else n.add(code); change(n); };
+  const pickNext = () => {
+    const n = new Set([...picked].filter((c) => !inStream.some((x) => x.student_code === c)));
+    list.filter((x) => !status.has(x.student_code) || status.get(x.student_code) === "in_progress").slice(0, Math.max(1, size)).forEach((x) => n.add(x.student_code));
+    change(n);
+  };
+  const count = (st: string) => [...picked].filter((c) => verified.some((x) => x.student_code === c && x.stream === st)).length;
+  return <Panel className="mt-4" title={`Exam room · ${selected === null ? "everyone may start" : `${selected.length} admitted`}`} icon={<Users className="h-4 w-4" />}>
+    <p className="mb-3 text-xs text-muted-foreground">Choose who may start the exam, for example by room size. Students not on the list cannot start. When this group has submitted, pick the next group.{!autoSchedule && autoCompleted ? " The exam closed itself because everyone submitted — admit the next group, then open the session again." : ""}</p>
+    <div className="mb-3 flex flex-wrap items-center gap-2">
+      {STREAMS.map((x) => <Btn key={x} variant={stream === x ? "primary" : "ghost"} className="px-3" onClick={() => { setStream(x); setSection("all"); }}>{x.split(" ")[0]} <span className="font-mono text-xs opacity-80">{count(x)}</span></Btn>)}
+      <select aria-label="Room section" className="field w-auto" value={section} onChange={(e) => setSection(e.target.value)}><option value="all">All sections</option>{sections.map((x) => <option key={x} value={x}>Section {x}</option>)}</select>
+      <div className="relative w-full sm:w-56"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><input aria-label="Search room students" className="field pl-9" placeholder="Search name or ID" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+    </div>
+    <div className="mb-3 flex flex-wrap items-center gap-2">
+      <label className="flex items-center gap-2 text-xs text-muted-foreground">Room size<input type="number" min={1} max={500} aria-label="Room size" className="field w-20" value={size} onChange={(e) => setSize(Number(e.target.value))} /></label>
+      <Btn variant="ghost" className="text-xs" onClick={pickNext}><Users className="h-3.5 w-3.5" />Select next {size || 1}</Btn>
+      <Btn variant="ghost" className="text-xs" onClick={() => change(new Set([...picked].filter((c) => !inStream.some((x) => x.student_code === c))))}>Clear {stream.split(" ")[0]}</Btn>
+      <span className="ml-auto flex flex-wrap gap-2">
+        <Btn variant="ghost" className="text-xs" disabled={selected === null && !dirty} onClick={async () => { await onSave(null); setPicked(new Set()); setDirty(false); }}>Allow everyone</Btn>
+        <Btn className="text-xs" disabled={!picked.size || (!dirty && selected !== null)} onClick={async () => { await onSave([...picked]); setDirty(false); }}><CheckCircle2 className="h-3.5 w-3.5" />Save room list ({picked.size})</Btn>
+      </span>
+    </div>
+    {live && dirty && <p className="mb-2 text-xs text-warning">Changes apply as soon as you save. Students already writing keep going.</p>}
+    <ul className="grid max-h-80 gap-1 overflow-y-auto text-sm sm:grid-cols-2 lg:grid-cols-3">
+      {list.map((x) => { const st = status.get(x.student_code); return <li key={x.student_code}>
+        <label className={`flex cursor-pointer items-center gap-2 rounded-lg border p-2 ${picked.has(x.student_code) ? "border-primary bg-primary/10" : "border-border"}`}>
+          <input type="checkbox" checked={picked.has(x.student_code)} onChange={() => toggle(x.student_code)} aria-label={`Admit ${x.full_name}`} />
+          <span className="min-w-0 flex-1"><span className="block truncate">{x.full_name}</span><span className="font-mono text-xs text-muted-foreground">{x.student_code} · {x.section}</span></span>
+          {st && <span className={`shrink-0 text-xs ${st === "in_progress" ? "text-primary" : st === "blocked" ? "text-destructive" : "text-accent"}`}>{st === "in_progress" ? "writing" : st === "blocked" ? "blocked" : "done ✓"}</span>}
+        </label>
+      </li>; })}
+      {!list.length && <li className="text-muted-foreground">No verified students here yet.</li>}
+    </ul>
   </Panel>;
 }
 
