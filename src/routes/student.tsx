@@ -444,14 +444,14 @@ function Results({ student }: { student: PublicStudent }) {
         </div>
         <div className="text-center"><Trophy className="mx-auto h-8 w-8 text-warning" /><div className="font-display text-2xl font-bold">{taken.length}/{subs.length}</div><div className="text-xs text-muted-foreground">subjects graded</div></div>
       </div>
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-5 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         {subs.map((sub) => { const v = mine[sub]; return (
-          <div key={sub} className="rounded-2xl border border-border bg-secondary/30 p-4">
-            <div className="flex justify-between text-sm"><span>{sub}</span><span className="font-mono font-semibold">{v === undefined ? "—" : `${v}/100`}</span></div>
+          <div key={sub} className="rounded-2xl border border-border bg-secondary/30 p-3 sm:p-4">
+            <div className="flex flex-wrap justify-between gap-1 text-sm"><span>{sub}</span><span className="font-mono font-semibold">{v === undefined ? "—" : `${v}/100`}</span></div>
             <div className="mt-2 h-1.5 rounded-full bg-muted"><div className={`h-full rounded-full ${(v ?? 0) >= 50 ? "bg-accent" : "bg-destructive"}`} style={{ width: `${v ?? 0}%` }} /></div>
           </div>
         ); })}
-        <div className="rounded-2xl border border-primary/50 bg-primary/10 p-4 sm:col-span-2 lg:col-span-1">
+        <div className="col-span-2 rounded-2xl border border-primary/50 bg-primary/10 p-4 lg:col-span-1">
           <div className="text-sm text-muted-foreground">Total</div><div className="font-display text-2xl font-bold">{total}/{max || 0}</div><div className="text-sm text-primary">{max ? ((total / max) * 100).toFixed(1) : "0.0"}%</div>
         </div>
       </div>
