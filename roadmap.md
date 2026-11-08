@@ -41,4 +41,4 @@
 
 - [x] Move project to this Lovable Cloud (schema, school list, photo storage, passwords)
 - [ ] Import existing data from the old project (waiting on table exports from the user)
-- [ ] IT Admin PIN (waiting on the user to enter it in the secure form)
+- [x] IT Admin PIN saved
