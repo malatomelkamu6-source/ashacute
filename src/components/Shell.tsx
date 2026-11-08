@@ -39,18 +39,18 @@ export function Shell({ children, title, subtitle, help = false }: { children: R
   return (
     <div className="relative min-h-screen">
       <img src={logo.url} alt="" aria-hidden className="pointer-events-none fixed left-1/2 top-1/2 -z-0 w-[560px] max-w-[80vw] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.05]" />
-      <header className="sticky top-0 z-30 border-b border-border bg-background/70 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3">
-          <Link to="/" className="flex items-center gap-3">
-            <img src={logo.url} alt="Burka Harbu logo" className="h-10 w-10 rounded-full ring-1 ring-primary/40" />
-            <div className="leading-tight">
-              <div className="font-display text-sm font-semibold">Burka Harbu Special Secondary School</div>
-              <div className="text-xs text-muted-foreground">Grade 12 National Exam Platform</div>
+      <header className="z-30 border-b border-border bg-background/70 backdrop-blur-xl md:sticky md:top-0">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2 sm:px-4 sm:py-3">
+          <Link to="/" className="flex min-w-0 items-center gap-3">
+            <img src={logo.url} alt="Burka Harbu logo" className="h-9 w-9 shrink-0 rounded-full ring-1 ring-primary/40 sm:h-10 sm:w-10" />
+            <div className="min-w-0 leading-tight">
+              <div className="truncate font-display text-sm font-semibold">Burka Harbu Special Secondary School</div>
+              <div className="truncate text-xs text-muted-foreground">Grade 12 National Exam Platform</div>
             </div>
           </Link>
-          <nav className="ml-auto flex flex-wrap gap-1 rounded-full border border-border bg-secondary/50 p-1">
+          <nav className="-mx-1 flex w-full gap-1 overflow-x-auto rounded-full border border-border bg-secondary/50 p-1 md:mx-0 md:ml-auto md:w-auto">
             {shownRoles.map((r) => (
-              <Link key={r.to} to={r.to} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+              <Link key={r.to} to={r.to} className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
                 activeProps={{ className: "bg-primary text-primary-foreground hover:text-primary-foreground" }}>
                 <r.icon className="h-3.5 w-3.5" /> {r.label}
               </Link>
@@ -62,9 +62,9 @@ export function Shell({ children, title, subtitle, help = false }: { children: R
           </div>
         </div>
       </header>
-      <main className="relative mx-auto max-w-7xl px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold md:text-4xl">{title}</h1>
+      <main className="relative mx-auto max-w-7xl px-3 py-5 sm:px-4 sm:py-8">
+        <div className="mb-5 sm:mb-8">
+          <h1 className="text-2xl font-bold sm:text-3xl md:text-4xl">{title}</h1>
           <p className="mt-1 text-muted-foreground">{subtitle}</p>
         </div>
         {children}
