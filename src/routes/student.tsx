@@ -308,7 +308,7 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
   useEffect(() => { if (paper && left === 0 && !ended && !offline) push(); }, [left, paper]);
   useEffect(() => {
     let last = 0;
-    const hit = (kind: "fullscreen" | "focus") => { if (endedRef.current || pausedRef.current || Date.now() - last < 1500) return; last = Date.now(); push({ violation: kind }); };
+    const hit = (kind: "fullscreen" | "focus") => { if (endedRef.current || pausedRef.current || offlineRef.current || Date.now() - last < 1500) return; last = Date.now(); push({ violation: kind }); };
     const blur = () => hit("focus");
     const vis = () => document.hidden && hit("focus");
     const fs = () => { const on = !!document.fullscreenElement; setIsFs(on); if (!on) hit("fullscreen"); };
@@ -354,8 +354,13 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
         </div>
       )}
       {offline && !paused && (
-        <div role="status" className="mx-auto mt-4 flex max-w-6xl items-center gap-3 rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm text-warning">
-          <WifiOff className="h-4 w-4 shrink-0" /> No connection. Keep going — your answers are kept on this device and will be sent when the internet returns. If it stays off, your time will be held for you.
+        <div role="alertdialog" aria-modal="true" aria-labelledby="offline-title" className="fixed inset-0 z-40 flex items-center justify-center bg-background/90 p-4 backdrop-blur-sm">
+          <div className="glass max-w-sm p-6 text-center sm:p-8">
+            <WifiOff className="mx-auto h-10 w-10 text-warning" />
+            <h2 id="offline-title" className="mt-3 text-xl font-bold">No connection</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Your timer is stopped and your exam is not submitted. Your answers, your place (question {idx + 1}) and your time ({fmt(left)}) are saved on this device. When the internet returns, the Director will let you continue.</p>
+            <p className="mt-3 animate-pulse text-xs text-warning">Reconnecting…</p>
+          </div>
         </div>
       )}
       {!isFs && !paused && (
