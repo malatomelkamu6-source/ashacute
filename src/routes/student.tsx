@@ -335,7 +335,7 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
   return (
     <div className="min-h-screen">
       <div className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-3 py-2 sm:gap-4 sm:px-4 sm:py-3">
           <img src={logo.url} alt="" className="h-9 w-9 rounded-full" />
           <div className="text-sm"><div className="font-semibold">{paper.title}</div><div className="text-xs text-muted-foreground">{student.id} · {answeredCount}/{paper.paper.length} answered</div></div>
           <span className={`ml-auto flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${violations ? "border-destructive/50 text-destructive" : "border-accent/40 text-accent"}`}><AlertTriangle className="h-3.5 w-3.5" />{violations}/3 warnings</span>
@@ -369,15 +369,15 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
           <Btn variant="danger" className="ml-auto py-1 text-xs" onClick={() => document.documentElement.requestFullscreen().catch(() => {})}>Return to fullscreen</Btn>
         </div>
       )}
-      <div className="mx-auto grid max-w-6xl gap-4 px-4 py-6 lg:grid-cols-[1fr_260px]">
-        <div className="glass p-6">
+      <div className="mx-auto grid max-w-6xl gap-4 px-3 py-4 sm:px-4 sm:py-6 lg:grid-cols-[1fr_260px]">
+        <div className="glass p-4 sm:p-6">
           <div className="flex items-center justify-between text-xs text-muted-foreground"><span>Question {idx + 1} of {paper.paper.length}</span><span>{cur.marks} mark{cur.marks > 1 ? "s" : ""}</span></div>
-          <h2 className="mt-3 text-xl font-semibold leading-relaxed">{cur.text}</h2>
+          <h2 className="mt-3 break-words text-lg font-semibold leading-relaxed sm:text-xl">{cur.text}</h2>
           <div className="mt-6 space-y-3">
             {cur.choices.map((c, k) => {
               const sel = answers[cur.id] === c.value;
               return (
-                <button key={c.value} onClick={() => setAnswers({ ...answers, [cur.id]: c.value })} className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition ${sel ? "border-primary bg-primary/10 glow" : "border-border hover:border-primary/50"}`}>
+                <button key={c.value} onClick={() => setAnswers({ ...answers, [cur.id]: c.value })} className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition sm:p-4 ${sel ? "border-primary bg-primary/10 glow" : "border-border hover:border-primary/50"}`}>
                   <span className={`flex h-8 w-8 items-center justify-center rounded-lg font-mono text-sm ${sel ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{"ABCD"[k]}</span>
                   {c.label}
                 </button>
@@ -393,11 +393,11 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
             <Btn className="ml-auto" disabled={idx === paper.paper.length - 1} onClick={() => setIdx(idx + 1)}>Next<ChevronRight className="h-4 w-4" /></Btn>
           </div>
         </div>
-        <div className="glass h-fit p-4">
+        <div className="glass h-fit p-4 max-lg:order-first">
           <div className="mb-1 text-xs text-muted-foreground">Time left</div>
           <div className={`mb-4 font-mono text-3xl font-bold ${left < 300 ? "animate-pulse text-destructive" : "text-primary"}`}>{fmt(left)}</div>
           <div className="mb-3 text-sm font-semibold">Navigator</div>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 lg:grid-cols-5">
             {paper.paper.map((p, i) => {
               const a = answers[p.id] !== undefined, f = flagged.has(p.id);
               return <button key={p.id} onClick={() => setIdx(i)} className={`relative h-10 rounded-lg border font-mono text-sm ${i === idx ? "ring-2 ring-primary" : ""} ${a ? "border-accent bg-accent/20 text-accent" : "border-border bg-muted/50"}`}>{i + 1}{f && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-warning" />}</button>;
