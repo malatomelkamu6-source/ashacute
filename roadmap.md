@@ -46,3 +46,6 @@
 - [x] IT Admin: filter by Natural Science section (A/B) and Social Science
 - [x] Scroll helper button on every page; premium dropdown borders and header
 - [x] IT Admin: edit student details (class, stream, gender, batch, registered date)
+- [x] Director: "Delete all" alerts button; header icon changed
+- [x] Exam stays fullscreen until it ends (no pop-ups that exit it, tap returns to fullscreen, works on every device)
+- [ ] Exam: questions cannot be selected or copied
