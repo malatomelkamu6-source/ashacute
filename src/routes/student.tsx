@@ -338,6 +338,7 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-3 py-2 sm:gap-4 sm:px-4 sm:py-3">
           <img src={logo.url} alt="" className="h-9 w-9 rounded-full" />
           <div className="text-sm"><div className="font-semibold">{paper.title}</div><div className="text-xs text-muted-foreground">{student.id} · {answeredCount}/{paper.paper.length} answered</div></div>
+          <span className={`rounded-full border border-border px-2.5 py-1 font-mono text-sm font-bold lg:hidden ${left < 300 ? "text-destructive" : "text-primary"}`} aria-label="Time left">{fmt(left)}</span>
           <span className={`ml-auto flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${violations ? "border-destructive/50 text-destructive" : "border-accent/40 text-accent"}`}><AlertTriangle className="h-3.5 w-3.5" />{violations}/3 warnings</span>
           <Btn variant="accent" onClick={() => confirm(`Submit now? ${paper.paper.length - answeredCount} unanswered.`) && push({ submit: true })}>Submit</Btn>
         </div>
@@ -393,7 +394,7 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
             <Btn className="ml-auto" disabled={idx === paper.paper.length - 1} onClick={() => setIdx(idx + 1)}>Next<ChevronRight className="h-4 w-4" /></Btn>
           </div>
         </div>
-        <div className="glass h-fit p-4 max-lg:order-first">
+        <div className="glass h-fit p-4">
           <div className="mb-1 text-xs text-muted-foreground">Time left</div>
           <div className={`mb-4 font-mono text-3xl font-bold ${left < 300 ? "animate-pulse text-destructive" : "text-primary"}`}>{fmt(left)}</div>
           <div className="mb-3 text-sm font-semibold">Navigator</div>
