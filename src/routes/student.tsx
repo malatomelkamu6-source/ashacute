@@ -8,6 +8,7 @@ import { Shell, Panel, Btn } from "@/components/Shell";
 import { LiveCamera } from "@/components/LiveCamera";
 import { canTakeStream } from "@/lib/admin-rules";
 import { fmt } from "@/lib/identity";
+import { HEARTBEAT_MS } from "@/lib/exam-timing";
 import { usePublicState } from "@/lib/live";
 import { studentExam, studentSync, studentFlag, studentResults } from "@/lib/exam.functions";
 import { registerStudent, loginStudent, checkRegistrationName, studentPing, studentSignOut, type PublicStudent } from "@/lib/students.functions";
@@ -202,8 +203,9 @@ function Register({ onDone, onBack }: { onDone: (s: PublicStudent) => void; onBa
 
 function ExamLobby({ onStart, stream }: { onStart: () => void; stream: string }) {
   const { data: st } = usePublicState();
-  const bank = st?.bank && canTakeStream(stream, st.bank.stream) ? st.bank : null;
-  const ok = !!st?.examLive && !!bank && !!st?.clockRunning;
+  const bank = st?.banks.find((b) => canTakeStream(stream, b.stream)) ?? null;
+  // Students already inside the exam can continue after a reload even when the start window has passed; the server decides.
+  const ok = !!st?.examLive && !!bank;
   return (
     <Panel title={`Scheduled exam · Round ${st?.round ?? "—"}`} icon={<ShieldCheck className="h-4 w-4" />}>
       {!bank ? <p className="text-sm text-muted-foreground">No exam scheduled.</p> : (
@@ -221,7 +223,7 @@ function ExamLobby({ onStart, stream }: { onStart: () => void; stream: string })
           </div>
           <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-border p-6">
             {!st?.examLive ? <p className="flex items-center gap-2 text-sm text-destructive"><Lock className="h-4 w-4" />The exam session is closed</p>
-              : !st.clockRunning ? <p className="text-sm text-warning">Outside the scheduled start window.</p>
+              : !st.clockRunning ? <p className="text-center text-sm text-warning">New starts are outside the scheduled window. If you already started, you can continue.</p>
               : <p className="text-sm text-accent">The exam is open.</p>}
             <Btn disabled={!ok} onClick={async () => { try { await document.documentElement.requestFullscreen(); } catch { /* blocked */ } onStart(); }}><Maximize className="h-4 w-4" />Enter fullscreen & begin</Btn>
           </div>
