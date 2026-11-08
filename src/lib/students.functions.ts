@@ -1,10 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { normalizeName, requireRosterName, requireAdminPin } from "@/lib/identity";
-import type { TablesInsert } from "@/integrations/supabase/types";
+import type { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 export { normalizeName } from "@/lib/identity";
 
-import { canReplaceFace, teacherRowSchema, teacherDetailsSchema, academicYear, sessionBlocksSignIn, teacherCredentialKey, RESULT_PIN, hashResultPin } from "@/lib/admin-rules";
+import { canReplaceFace, teacherRowSchema, teacherDetailsSchema, studentDetailsSchema, academicYear, sessionBlocksSignIn, teacherCredentialKey, RESULT_PIN, hashResultPin } from "@/lib/admin-rules";
 
 const BUCKET = "student-photos";
 
@@ -355,6 +355,23 @@ export const adminEditTeacher = createServerFn({ method: "POST" })
     const sb = await admin();
     const { error, data: row } = await sb.from("school_roster").update({ ...data.details, section: data.details.section.toUpperCase() }).eq("id", data.id).eq("kind", "teacher").select("id").maybeSingle();
     if (error || !row) throw new Error("Could not save the teacher's details.");
+    return { ok: true };
+  });
+
+/** IT Admin edits a student's class details and, when registered, their registration date. */
+export const adminEditStudent = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ passcode: z.string().min(1).max(200), id: z.string().min(3).max(30), details: studentDetailsSchema }).parse(d))
+  .handler(async ({ data }) => {
+    checkPasscode(data.passcode);
+    const sb = await admin();
+    const { registeredAt, ...d } = data.details;
+    const section = d.section.toUpperCase();
+    const { data: row, error } = await sb.from("school_roster").update({ ...d, section }).eq("id", data.id).eq("kind", "student").select("id").maybeSingle();
+    if (error || !row) throw new Error("Could not save this student's details.");
+    const reg: TablesUpdate<"registered_students"> = { grade: d.grade, section, stream: d.stream, gender: d.gender };
+    if (registeredAt) reg.created_at = new Date(registeredAt).toISOString();
+    const { error: regError } = await sb.from("registered_students").update(reg).eq("student_code", data.id);
+    if (regError) throw new Error("Saved the school list, but could not update the registration. Please try again.");
     return { ok: true };
   });
 
