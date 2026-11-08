@@ -40,6 +40,7 @@
 - [x] Simplify student results and fix phone layouts
 
 - [x] Move project to this Lovable Cloud (schema, school list, photo storage, passwords)
+- [x] Teacher paper import: PDF, Word, photo or text read into question banks automatically
 - [ ] Import existing data from the old project (waiting on table exports from the user)
 - [x] IT Admin PIN saved
 - [x] IT Admin: filter by Natural Science section (A/B) and Social Science
