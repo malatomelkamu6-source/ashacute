@@ -3,8 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import * as XLSX from "xlsx";
 import { ScanFace, Trash2, RefreshCw, Pencil, Download, LockKeyhole, Search, X, Save, Users, BookOpen, Copy, BadgeCheck, KeyRound, Upload, UserPlus, RotateCcw } from "lucide-react";
 import { Btn, Avatar } from "@/components/Shell";
-import { adminDirectory, adminDeleteStudent, adminEditName, adminSetRegistration, adminUploadRoster, adminAddRosterStudent, adminResetFace, adminDeletePerson, adminEditTeacher, adminResetResultPin, adminSetStaffVisibility } from "@/lib/students.functions";
-import { academicYear, SUBJECTS, STAFF_PAGES, RESULT_PIN, type TeacherDetails } from "@/lib/admin-rules";
+import { adminDirectory, adminDeleteStudent, adminEditName, adminEditStudent, adminSetRegistration, adminUploadRoster, adminAddRosterStudent, adminResetFace, adminDeletePerson, adminEditTeacher, adminResetResultPin, adminSetStaffVisibility } from "@/lib/students.functions";
+import { academicYear, SUBJECTS, STAFF_PAGES, RESULT_PIN, matchesClassFilter, classFilterOptions, type TeacherDetails, type StudentDetails } from "@/lib/admin-rules";
 import { EyeOff, Eye } from "lucide-react";
 import { adminResetStaffPassword } from "@/lib/exam.functions";
 import { matchesPerson } from "@/lib/results";
@@ -14,6 +14,8 @@ import { Toggle } from "@/components/Shell";
 type Directory = Awaited<ReturnType<typeof adminDirectory>>;
 const PAGE_LABEL: Record<string, string> = { director: "Director", "it-admin": "IT Admin", teacher: "Teachers" };
 type Person = { verified?: boolean; id: string; name: string; grade: string; section: string; stream: string; gender: string; subjects: string[]; photoUrl: string | null; createdAt: string | null; target: "roster" | "registered"; kind: "student" | "teacher"; batch?: string | undefined };
+/** ISO time → value for a datetime-local input, in the viewer's own time zone. */
+const toLocalInput = (v: string | null) => { if (!v) return ""; const d = new Date(v); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
 const showDate = (v: string | null, time = false) => v ? new Date(v).toLocaleString(undefined, time ? { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" } : { year: "numeric", month: "short", day: "numeric" }) : "—";
 type RosterRow = { full_name: string; grade: string; section: string; stream: "Natural Science" | "Social Science"; gender: "M" | "F" };
 
@@ -76,6 +78,8 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
   const removePerson = useServerFn(adminDeletePerson);
   const editTeacher = useServerFn(adminEditTeacher);
   const [details, setDetails] = useState<TeacherDetails | null>(null);
+  const editStudent = useServerFn(adminEditStudent);
+  const [studentDetails, setStudentDetails] = useState<(StudentDetails & { registeredLocal: string }) | null>(null);
   const resetPin = useServerFn(adminResetResultPin);
   const setVisibility = useServerFn(adminSetStaffVisibility);
   const [pinFor, setPinFor] = useState<Person | null>(null);
@@ -95,7 +99,8 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
     catch (e) { setError(e instanceof Error ? e.message : "Could not remove."); }
     finally { setBusy(false); }
   };
-  const shown = people.filter((p) => (stream === "all" || p.stream === stream) && matchesPerson(query, p));
+  const shown = people.filter((p) => matchesClassFilter(stream, p) && matchesPerson(query, p));
+  const filterOptions = classFilterOptions(people);
   const picked = shown.find((p) => p.id === selected);
   const refresh = async () => {
     setBusy(true); setError("");
@@ -106,6 +111,7 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
   const startEdit = (p: Person) => {
     setEditing(p); setName(p.name); setError(""); setMessage("");
     setDetails(p.kind === "teacher" ? { stream: (["Natural Science", "Social Science", "Both"].includes(p.stream) ? p.stream : "Natural Science") as TeacherDetails["stream"], grade: p.grade || "12", section: p.section, gender: p.gender === "F" ? "F" : "M", subjects: p.subjects.filter((x): x is TeacherDetails["subjects"][number] => (SUBJECTS as readonly string[]).includes(x)), batch: p.batch || academicYear() } : null);
+    setStudentDetails(p.kind === "student" ? { grade: p.grade || "12", section: (p.section || "A").toUpperCase(), stream: p.stream === "Social Science" ? "Social Science" : "Natural Science", gender: p.gender === "F" ? "F" : "M", batch: p.batch || academicYear(), registeredLocal: toLocalInput(p.createdAt) } : null);
   };
   const exportRows = () => {
     const csv = (v: string) => `"${( /^[=+\-@\t\r]/.test(v) ? "'" + v : v).replaceAll('"', '""')}"`;
@@ -164,7 +170,7 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
     </div>
     <div className="mb-4 flex flex-wrap items-center gap-3">
       <div className="relative w-full max-w-sm"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><input aria-label="Search directory" className="field pl-9" placeholder="Search name or ID" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
-      <select aria-label="Filter stream" className="field w-auto max-w-full" value={stream} onChange={(e) => setStream(e.target.value)}><option value="all">All streams</option><option>Natural Science</option><option>Social Science</option><option>Both</option></select>
+      <select aria-label="Filter by stream and section" className="field w-auto max-w-full" value={stream} onChange={(e) => setStream(e.target.value)}><option value="all">All streams &amp; sections</option>{filterOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
       {view === "teachers" && <TeacherRosterTools passcode={passcode} onSaved={refresh} />}
       {view === "students" && <>
         <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" aria-label="Choose student list file" onChange={async (e) => {
@@ -211,7 +217,7 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
         <h2 className="mb-4 flex items-center gap-2 font-semibold"><ScanFace className="h-4 w-4 text-primary" />Profile details</h2>
         {!picked ? <p className="text-sm text-muted-foreground">No profile selected.</p> : <>
           {picked.photoUrl ? <img src={picked.photoUrl} alt={picked.name} className="mb-4 aspect-square w-full max-w-[280px] rounded-lg object-cover" /> : <Avatar name={picked.name} className="mb-4 h-20 w-20 text-2xl" />}
-          <div className="flex items-start gap-2"><h3 className="min-w-0 flex-1 break-words text-lg font-semibold">{picked.name}{picked.verified && <span className="ml-2 inline-flex items-center gap-1 text-xs text-accent"><BadgeCheck className="verified-badge h-4 w-4" />Verified</span>}</h3><Btn variant="ghost" title="Edit name" aria-label="Edit selected name" className="px-2" onClick={() => startEdit(picked)}><Pencil className="h-4 w-4" /></Btn></div>
+          <div className="flex items-start gap-2"><h3 className="min-w-0 flex-1 break-words text-lg font-semibold">{picked.name}{picked.verified && <span className="ml-2 inline-flex items-center gap-1 text-xs text-accent"><BadgeCheck className="verified-badge h-4 w-4" />Verified</span>}</h3><Btn variant="ghost" title="Edit details" aria-label="Edit selected details" className="px-2" onClick={() => startEdit(picked)}><Pencil className="h-4 w-4" /></Btn></div>
           <div className="mt-2 flex items-center gap-2 font-mono text-sm text-primary">{picked.id}<Btn variant="ghost" title="Copy ID" aria-label="Copy ID" className="px-2 py-1" onClick={async () => { try { await navigator.clipboard.writeText(picked.id); setMessage("ID copied."); } catch { setError("Could not copy ID."); } }}><Copy className="h-3 w-3" /></Btn></div>
           <dl className="mt-4 space-y-3 text-sm">{([["Stream", picked.stream], ["Grade / Section", `${picked.grade}${picked.section}`], ["Gender", picked.gender === "M" ? "Male" : picked.gender === "F" ? "Female" : "—"], ...(picked.kind === "teacher" ? [["Subjects", picked.subjects.join(", ") || "—"], ["Batch", picked.batch ?? "—"]] : [["Batch", picked.batch ?? "—"], ["Registered", picked.createdAt ? showDate(picked.createdAt, true) : "Not registered yet"]])] as [string, string][]).map(([k, v]) => <div key={k}><dt className="text-xs text-muted-foreground">{k}</dt><dd className="break-words">{v}</dd></div>)}</dl>
           {picked.kind === "teacher" && <div className="mt-6 flex flex-wrap gap-2">
@@ -225,8 +231,9 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
             }}><KeyRound className="h-4 w-4" />Reset password</Btn>
             <Btn variant="danger" disabled={busy} onClick={() => deletePerson(picked)}><Trash2 className="h-4 w-4" />Delete teacher</Btn>
           </div>}
-          {picked.kind === "student" && picked.target === "roster" && <div className="mt-6"><Btn variant="danger" disabled={busy} onClick={() => deletePerson(picked)}><Trash2 className="h-4 w-4" />Delete student</Btn></div>}
+          {picked.kind === "student" && picked.target === "roster" && <div className="mt-6 flex flex-wrap gap-2"><Btn variant="ghost" disabled={busy} onClick={() => startEdit(picked)}><Pencil className="h-4 w-4" />Edit details</Btn><Btn variant="danger" disabled={busy} onClick={() => deletePerson(picked)}><Trash2 className="h-4 w-4" />Delete student</Btn></div>}
           {picked.target === "registered" && <div className="mt-6 flex flex-wrap gap-2">
+            <Btn variant="ghost" disabled={busy} onClick={() => startEdit(picked)}><Pencil className="h-4 w-4" />Edit details</Btn>
             <Btn variant="ghost" disabled={busy} onClick={async () => {
               if (!confirm(`Reset ${picked.name}'s face verification? Their old photo is cleared and saved marks are kept. They must register again with a fresh photo.`)) return;
               setBusy(true); setError("");
@@ -268,11 +275,17 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
         try {
           if (name.trim() !== editing.name) await edit({ data: { passcode, id: editing.id, target: editing.target, name } });
           if (details) await editTeacher({ data: { passcode, id: editing.id, details } });
-          await refresh(); setEditing(null); setMessage(details ? "Teacher details saved." : "Name saved.");
+          if (studentDetails) {
+            const { registeredLocal, ...rest } = studentDetails;
+            const registeredAt = editing.createdAt && registeredLocal ? new Date(registeredLocal).toISOString() : undefined;
+            if (registeredAt && Date.parse(registeredAt) > Date.now() + 60_000) throw new Error("The registration date cannot be in the future.");
+            await editStudent({ data: { passcode, id: editing.id, details: { ...rest, registeredAt } } });
+          }
+          await refresh(); setEditing(null); setMessage(details ? "Teacher details saved." : studentDetails ? "Student details saved." : "Name saved.");
         } catch (e) { setError(e instanceof Error ? e.message : "Could not save name."); }
         finally { setBusy(false); }
       }}>
-        <div className="flex items-center"><h2 id="edit-title" className="flex-1 text-lg font-semibold">{details ? "Edit teacher" : "Edit name"}</h2><Btn type="button" variant="ghost" aria-label="Cancel editing" className="px-2" disabled={busy} onClick={() => setEditing(null)}><X className="h-4 w-4" /></Btn></div>
+        <div className="flex items-center"><h2 id="edit-title" className="flex-1 text-lg font-semibold">{details ? "Edit teacher" : studentDetails ? "Edit student" : "Edit name"}</h2><Btn type="button" variant="ghost" aria-label="Cancel editing" className="px-2" disabled={busy} onClick={() => setEditing(null)}><X className="h-4 w-4" /></Btn></div>
         <label htmlFor="edited-name" className="block text-sm">Full name</label>
         <input id="edited-name" autoFocus className="field" value={name} onChange={(e) => setName(e.target.value)} required minLength={3} maxLength={100} />
         {details && <>
@@ -285,8 +298,20 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
           <fieldset><legend className="text-sm">Subjects</legend><div className="mt-2 grid grid-cols-2 gap-2">{SUBJECTS.map((x) => <label key={x} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={details.subjects.includes(x)} onChange={(e) => setDetails({ ...details, subjects: e.target.checked ? [...details.subjects, x] : details.subjects.filter((y) => y !== x) })} />{x}</label>)}</div></fieldset>
           <label className="block text-sm">Batch (school year)<input className="field mt-1" value={details.batch} onChange={(e) => setDetails({ ...details, batch: e.target.value })} required maxLength={40} placeholder={academicYear()} /></label>
         </>}
+        {studentDetails && <>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-sm">Stream<select className="field mt-1" value={studentDetails.stream} onChange={(e) => setStudentDetails({ ...studentDetails, stream: e.target.value as StudentDetails["stream"] })}><option>Natural Science</option><option>Social Science</option></select></label>
+            <label className="block text-sm">Gender<select className="field mt-1" value={studentDetails.gender} onChange={(e) => setStudentDetails({ ...studentDetails, gender: e.target.value as StudentDetails["gender"] })}><option value="M">Male</option><option value="F">Female</option></select></label>
+            <label className="block text-sm">Grade<input className="field mt-1" value={studentDetails.grade} onChange={(e) => setStudentDetails({ ...studentDetails, grade: e.target.value })} required maxLength={10} /></label>
+            <label className="block text-sm">Section<select className="field mt-1" value={studentDetails.section} onChange={(e) => setStudentDetails({ ...studentDetails, section: e.target.value })}>{[...new Set(["A", "B", "C", studentDetails.section])].map((x) => <option key={x}>{x}</option>)}</select></label>
+          </div>
+          <label className="block text-sm">Batch (school year)<input className="field mt-1" value={studentDetails.batch} onChange={(e) => setStudentDetails({ ...studentDetails, batch: e.target.value })} required maxLength={40} placeholder={academicYear()} /></label>
+          {editing.createdAt ? <label className="block text-sm">Registered date<input type="datetime-local" aria-label="Registered date" className="field mt-1" value={studentDetails.registeredLocal} max={toLocalInput(new Date().toISOString())} onChange={(e) => setStudentDetails({ ...studentDetails, registeredLocal: e.target.value })} /></label>
+            : <p className="text-xs text-muted-foreground">Not registered yet — the registered date appears after they register.</p>}
+          <p className="text-xs text-muted-foreground">The official ID ({editing.id}) stays the same so saved marks are kept.</p>
+        </>}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-        <Btn className="w-full" disabled={busy}><Save className="h-4 w-4" />{busy ? "Saving…" : details ? "Save teacher" : "Save name"}</Btn>
+        <Btn className="w-full" disabled={busy}><Save className="h-4 w-4" />{busy ? "Saving…" : details ? "Save teacher" : studentDetails ? "Save student" : "Save name"}</Btn>
       </form>
     </div>}
     {pendingRows && <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="upload-title">
