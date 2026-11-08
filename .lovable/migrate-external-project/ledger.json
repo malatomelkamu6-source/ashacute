@@ -1,16 +1,15 @@
 {
-  "source": "code-archive (ashalove-main_2.zip, Lovable TanStack project with its own Lovable Cloud backend)",
+  "source": "code-archive (ashalove-main_2.zip, Lovable TanStack project with its own Cloud backend)",
   "capabilities": [
-    {"capability": "code", "source": "src/ routes director, student, teacher, it-admin, index", "outcome": "migrate", "status": "in_progress", "next_action": "Copy source into this project and add requested features"},
-    {"capability": "schema", "source": "drizzle/migrations 0000-0009", "outcome": "migrate", "status": "pending", "next_action": "Recreate as Lovable Cloud migration"},
-    {"capability": "records: school_roster", "source": "migration seed rows", "outcome": "migrate", "status": "pending", "next_action": "Seed from the source migration (official roster)"},
-    {"capability": "records: registered_students, exam_attempts, round_results, question_banks, exam_events, staff_credentials, exam_settings", "source": "old Cloud database (no export attached)", "outcome": "migrate", "status": "pending", "next_action": "Ask the user for CSV exports from the old project's Cloud tables"},
-    {"capability": "storage: student-photos bucket bytes", "source": "old Cloud storage", "outcome": "migrate", "status": "pending", "next_action": "Create private bucket; file bytes need download from old project"},
-    {"capability": "auth identities", "source": "none (passcode-based staff, name+ID students)", "outcome": "not_applicable", "status": "verified", "next_action": "none"},
-    {"capability": "secrets: DIRECTOR_PASSCODE, TEACHER_PASSCODE, IT_ADMIN_PASSCODE", "source": "old project env", "outcome": "migrate", "status": "pending", "next_action": "Set director/teacher from user's chat values; request IT Admin PIN via secure form"},
-    {"capability": "AI face checks", "source": "src/lib/face.server.ts via Lovable AI gateway", "outcome": "preserve", "status": "pending", "next_action": "Works with LOVABLE_API_KEY once Cloud is enabled"},
-    {"capability": "schedule: pg_cron auto open/close", "source": "migration 0004/0009", "outcome": "migrate", "status": "pending", "next_action": "Recreate in migration"},
-    {"capability": "cutover", "source": "-", "outcome": "pending", "status": "pending", "next_action": "Publish once data is imported"},
-    {"capability": "verification", "source": "-", "outcome": "pending", "status": "pending", "next_action": "Test director, teacher, student flows"}
+    {"capability": "code", "source": "src/ routes director, student, teacher, it-admin, index", "outcome": "migrate", "status": "verified", "next_action": "none"},
+    {"capability": "schema", "source": "drizzle/migrations 0000-0009 + new auto-close", "outcome": "migrate", "status": "verified", "next_action": "none"},
+    {"capability": "records: school_roster", "source": "source migration seed", "outcome": "migrate", "status": "verified", "next_action": "115 rows, checksum matches source"},
+    {"capability": "records: registered_students, exam_attempts, round_results, question_banks, exam_events, staff_credentials, exam_settings, exam_rounds", "source": "old Cloud database", "outcome": "migrate", "status": "pending", "next_action": "User exports CSV per table from old project"},
+    {"capability": "storage: student-photos bytes", "source": "old Cloud storage", "outcome": "migrate", "status": "pending", "next_action": "Bucket created; photos need export or students re-register"},
+    {"capability": "auth identities", "source": "none (passcode staff, name+ID students)", "outcome": "not_applicable", "status": "verified", "next_action": "none"},
+    {"capability": "secrets", "source": "DIRECTOR_PASSCODE, TEACHER_PASSCODE, IT_ADMIN_PASSCODE", "outcome": "migrate", "status": "pending", "next_action": "Director/teacher set; IT Admin PIN requested via secure form"},
+    {"capability": "AI face checks", "source": "Lovable AI gateway", "outcome": "preserve", "status": "pending", "next_action": "Not exercised (needs a real camera photo)"},
+    {"capability": "schedule: auto open/close", "source": "pg_cron", "outcome": "migrate", "status": "pending", "next_action": "Manual auto-close verified; timed Auto mode not exercised"},
+    {"capability": "verification", "source": "-", "outcome": "migrate", "status": "verified", "next_action": "Director, teacher, student, offline, results, reset tested end to end; test rows removed"}
   ]
 }

@@ -32,9 +32,13 @@
 - [x] Social Science Mathematics teacher can also send SAT papers (Social Science students only)
 - [x] Students choose a numeric result passcode at registration; needed to open published results
 - [x] Teachers: "My students' marks" page limited to their own subject and stream
-- [ ] Test numeric passcodes, authenticated teacher marks, published results and disruption panel
-- [ ] Reset results consistently across Director, student and teacher views
-- [ ] Auto-close after admitted students finish; selected room students and simultaneous streams
-- [ ] Immediate offline protection, saved progress and Director-controlled recovery
-- [ ] IT Admin result-PIN reset and hidden staff navigation controls
-- [ ] Simplify student results and fix phone layouts
+- [x] Test numeric passcodes, authenticated teacher marks, published results and disruption panel
+- [x] Reset results consistently across Director, student and teacher views
+- [x] Auto-close after admitted students finish; selected room students and simultaneous streams
+- [x] Immediate offline protection, saved progress and Director-controlled recovery
+- [x] IT Admin result-PIN reset and hidden staff navigation controls
+- [x] Simplify student results and fix phone layouts
+
+- [x] Move project to this Lovable Cloud (schema, school list, photo storage, passwords)
+- [ ] Import existing data from the old project (waiting on table exports from the user)
+- [ ] IT Admin PIN (waiting on the user to enter it in the secure form)
