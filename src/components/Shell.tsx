@@ -1,0 +1,105 @@
+import { Link } from "@tanstack/react-router";
+import { useEffect, useState, type ReactNode } from "react";
+import { Crown, Cpu, BookOpen, GraduationCap, MessageCircle } from "lucide-react";
+import logo from "@/assets/logo.jpg.asset.json";
+import { usePublicState } from "@/lib/live";
+
+const roles = [
+  { to: "/director", label: "Director", icon: Crown },
+  { to: "/it-admin", label: "IT Admin", icon: Cpu },
+  { to: "/teacher", label: "Teacher", icon: BookOpen },
+  { to: "/student", label: "Student", icon: GraduationCap },
+] as const;
+
+export function useNow(ms = 1000) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), ms);
+    return () => clearInterval(t);
+  }, [ms]);
+  return now;
+}
+
+export const SUPPORT_URL = "https://t.me/bhsss_admin";
+export function HelpLink() {
+  return <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="help-link"><MessageCircle className="h-4 w-4" />Need help? Contact us</a>;
+}
+
+export function Shell({ children, title, subtitle, help = false }: { children: ReactNode; title: string; subtitle: string; help?: boolean }) {
+  const { data } = usePublicState();
+  const live = !!data?.examLive;
+  const published = !!data?.resultsPublished;
+  return (
+    <div className="relative min-h-screen">
+      <img src={logo.url} alt="" aria-hidden className="pointer-events-none fixed left-1/2 top-1/2 -z-0 w-[560px] max-w-[80vw] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.05]" />
+      <header className="sticky top-0 z-30 border-b border-border bg-background/70 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3">
+          <Link to="/" className="flex items-center gap-3">
+            <img src={logo.url} alt="Burka Harbu logo" className="h-10 w-10 rounded-full ring-1 ring-primary/40" />
+            <div className="leading-tight">
+              <div className="font-display text-sm font-semibold">Burka Harbu Special Secondary School</div>
+              <div className="text-xs text-muted-foreground">Grade 12 National Exam Platform</div>
+            </div>
+          </Link>
+          <nav className="ml-auto flex flex-wrap gap-1 rounded-full border border-border bg-secondary/50 p-1">
+            {roles.map((r) => (
+              <Link key={r.to} to={r.to} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+                activeProps={{ className: "bg-primary text-primary-foreground hover:text-primary-foreground" }}>
+                <r.icon className="h-3.5 w-3.5" /> {r.label}
+              </Link>
+            ))}
+          </nav>
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-2"><span className={live ? "dot-live" : "dot-off"} /> Exam {live ? "Live" : "Locked"}</span>
+            <span className="flex items-center gap-2"><span className={published ? "dot-live" : "dot-off"} /> Results {published ? "Out" : "Hidden"}</span>
+          </div>
+        </div>
+      </header>
+      <main className="relative mx-auto max-w-7xl px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold md:text-4xl">{title}</h1>
+          <p className="mt-1 text-muted-foreground">{subtitle}</p>
+        </div>
+        {children}
+        {help && <div className="mt-10 flex justify-center"><HelpLink /></div>}
+      </main>
+    </div>
+  );
+}
+
+export function Panel({ title, icon, children, className = "", action }: { title: string; icon?: ReactNode; children: ReactNode; className?: string; action?: ReactNode }) {
+  return (
+    <section className={`glass p-5 ${className}`}>
+      <div className="mb-4 flex items-center gap-2">
+        {icon && <span className="text-primary">{icon}</span>}
+        <h2 className="text-base font-semibold">{title}</h2>
+        <div className="ml-auto">{action}</div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)}
+      className={`relative h-7 w-12 rounded-full border transition ${on ? "border-accent bg-accent/30 glow" : "border-border bg-muted"}`}>
+      <span className={`absolute top-0.5 h-5 w-5 rounded-full transition-all ${on ? "left-6 bg-accent" : "left-0.5 bg-muted-foreground"}`} />
+    </button>
+  );
+}
+
+export function Btn({ children, variant = "primary", className = "", ...p }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "ghost" | "danger" | "accent" }) {
+  const v = {
+    primary: "bg-primary text-primary-foreground hover:brightness-110 glow",
+    accent: "bg-accent text-accent-foreground hover:brightness-110",
+    ghost: "border border-border bg-secondary/40 hover:bg-secondary",
+    danger: "bg-destructive/15 text-destructive border border-destructive/40 hover:bg-destructive/25",
+  }[variant];
+  return <button {...p} className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:opacity-40 ${v} ${className}`}>{children}</button>;
+}
+
+export function Avatar({ name, className = "h-12 w-12" }: { name: string; className?: string }) {
+  const init = name.split(" ").slice(0, 2).map((n) => n[0]).join("");
+  return <div className={`flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/40 to-accent/30 font-display font-bold ring-1 ring-primary/40 ${className}`}>{init}</div>;
+}

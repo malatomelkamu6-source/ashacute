@@ -1,0 +1,40 @@
+- [x] Move exams, timer, rounds and results to the database with live refresh
+- [x] Director: session/results/SAT toggles, rounds, timer extension, live started/not-started, alerts, re-admit
+- [x] IT Admin: registration switch, "Student List", verified badge
+- [x] Teachers: secure sign-in, saved banks, flagged-question inbox
+- [x] Students: face checks, 3-strike lockout, time-up submit, round results
+- [x] "Need help? Contact us" Telegram link
+- [x] Fix registration verify error (class/stream/gender now come from the school list)
+- [x] Fix registration open/closed switch
+- [x] School logo on every sign-in form
+- [x] IT Admin: reset Director/Teacher passwords (one-time code shown to hand over)
+- [x] Director: change own password, active immediately
+- [x] Individual timers, scheduled exam date, extensions and date-scoped participation
+- [x] Round and alert removal controls; reliable marks for every exam
+- [x] Add real questions and verify Director → student → saved results (6/6 read back after reload)
+- [x] IT Admin: Excel batch upload (previous batches kept), add-student form, face-verification reset
+- [x] Registration closed → lock screen on the student registration page
+- [x] Fix admin face reset while preserving saved marks and requiring re-verification
+- [x] Add Excel upload and manual teacher entry
+- [x] Add optional automatic scheduling, stream-specific queues, queue removal and live counters
+- [x] Reset visible rounds to 1 while retaining archived marks
+- [x] IT Admin: delete student/teacher completely; profile fields cleanup; school-year batches; registered date + batch; teacher details edit + per-teacher password reset
+- [x] Director: score bands by gender; Excel results download (all / by section); per-student add time / pause
+- [x] Teacher: own password change; remove question banks and flags
+- [x] Students: one active sign-in per student during a live exam
+- [x] IT Admin: search by ID; reset one chosen teacher's password
+- [x] Director: reset results in the results matrix; score summary out of 600 when SAT is added
+- [x] Teacher: choose stream then name; Ermiyaas can upload Mathematics or SAT
+- [x] Director: results matrix ranked high→low with top-3 trophy/medal highlight
+- [x] Connection/power loss: freeze timer, keep answers + current question, Director lets students continue
+- [x] Director: add marks for a flagged question (to flaggers or everyone)
+- [x] Director: Settings button holding password change, SAT switch and new round
+- [x] Social Science Mathematics teacher can also send SAT papers (Social Science students only)
+- [x] Students choose a numeric result passcode at registration; needed to open published results
+- [x] Teachers: "My students' marks" page limited to their own subject and stream
+- [ ] Test numeric passcodes, authenticated teacher marks, published results and disruption panel
+- [ ] Reset results consistently across Director, student and teacher views
+- [ ] Auto-close after admitted students finish; selected room students and simultaneous streams
+- [ ] Immediate offline protection, saved progress and Director-controlled recovery
+- [ ] IT Admin result-PIN reset and hidden staff navigation controls
+- [ ] Simplify student results and fix phone layouts

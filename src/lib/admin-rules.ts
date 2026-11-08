@@ -1,0 +1,47 @@
+import { z } from "zod";
+export function teacherStream(stream: string, id: string) {
+  return stream === "Social Science" || (stream === "Both" && id.startsWith("T-SOC-")) ? "Social Science" : "Natural Science";
+}
+export const canTakeStream = (student: string, target: string | null) => !!target && student === target;
+export const canReplaceFace = (existing: { face_verified: boolean } | null) => !existing || !existing.face_verified;
+export const SUBJECTS = ["Physics", "Chemistry", "Biology", "Mathematics", "English", "Geography", "History", "Economics", "SAT"] as const;
+export const teacherRowSchema = z.object({
+  full_name: z.string().trim().min(3).max(100),
+  stream: z.enum(["Natural Science", "Social Science"]),
+  gender: z.enum(["M", "F"]),
+  subjects: z.array(z.enum(SUBJECTS)).min(1).max(9),
+});
+export type TeacherRow = z.infer<typeof teacherRowSchema>;
+export const teacherDetailsSchema = z.object({
+  stream: z.enum(["Natural Science", "Social Science", "Both"]),
+  grade: z.string().trim().min(1).max(10),
+  section: z.string().trim().max(10),
+  gender: z.enum(["M", "F"]),
+  subjects: z.array(z.enum(SUBJECTS)).min(1).max(9),
+  batch: z.string().trim().min(1).max(40),
+});
+export type TeacherDetails = z.infer<typeof teacherDetailsSchema>;
+
+/** School year label, e.g. "2026/27". The school year starts in September. */
+export function academicYear(date = new Date()) {
+  const y = date.getFullYear();
+  const start = date.getMonth() >= 8 ? y : y - 1;
+  return `${start}/${String((start + 1) % 100).padStart(2, "0")}`;
+}
+
+/** A student's own sign-in session counts as active for this long after their last request. */
+export const SESSION_ACTIVE_MS = 2 * 60 * 1000;
+export function sessionBlocksSignIn(examLive: boolean, seenAt: string | null, time = Date.now()) {
+  return examLive && !!seenAt && time - Date.parse(seenAt) < SESSION_ACTIVE_MS;
+}
+
+/** Staff credential key: each teacher may have a personal password row. */
+export const teacherCredentialKey = (id: string) => `teacher:${id}`;
+
+/** Result PIN chosen at registration: digits only, 4 to 6 long. */
+export const RESULT_PIN = /^\d{4,6}$/;
+export const isValidResultPin = (pin: string) => RESULT_PIN.test(pin);
+export async function hashResultPin(studentCode: string, pin: string) {
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`bh-result:${studentCode.toUpperCase()}:${pin}`));
+  return Array.from(new Uint8Array(bytes), (b) => b.toString(16).padStart(2, "0")).join("");
+}
