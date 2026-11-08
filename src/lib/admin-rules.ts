@@ -3,6 +3,11 @@ export function teacherStream(stream: string, id: string) {
   return stream === "Social Science" || (stream === "Both" && id.startsWith("T-SOC-")) ? "Social Science" : "Natural Science";
 }
 export const canTakeStream = (student: string, target: string | null) => !!target && student === target;
+/** Subjects a teacher may upload and see marks for: Mathematics teachers also handle SAT papers for their own stream. */
+export const uploadSubjects = (subjects: string[]) => subjects.includes("Mathematics") && !subjects.includes("SAT") ? [...subjects, "SAT"] : subjects;
+/** Staff pages the IT Admin can hide from the home page and menus; hidden pages still open from their direct link. */
+export const STAFF_PAGES = ["director", "it-admin", "teacher"] as const;
+export const isPageVisible = (page: string, hidden: string[] | null | undefined) => !(hidden ?? []).includes(page);
 export const canReplaceFace = (existing: { face_verified: boolean } | null) => !existing || !existing.face_verified;
 export const SUBJECTS = ["Physics", "Chemistry", "Biology", "Mathematics", "English", "Geography", "History", "Economics", "SAT"] as const;
 export const teacherRowSchema = z.object({
