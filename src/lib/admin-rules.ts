@@ -27,6 +27,34 @@ export const teacherDetailsSchema = z.object({
 });
 export type TeacherDetails = z.infer<typeof teacherDetailsSchema>;
 
+/** A registration date cannot be in the future (one minute of clock slack allowed). */
+export const isValidRegisteredDate = (v: string, now = Date.now()) => { const t = Date.parse(v); return Number.isFinite(t) && t <= now + 60_000; };
+export const studentDetailsSchema = z.object({
+  grade: z.string().trim().min(1).max(10),
+  section: z.string().trim().min(1).max(5),
+  stream: z.enum(["Natural Science", "Social Science"]),
+  gender: z.enum(["M", "F"]),
+  batch: z.string().trim().min(1).max(40),
+  registeredAt: z.string().max(40).refine(isValidRegisteredDate, "The registration date cannot be in the future.").optional(),
+});
+export type StudentDetails = z.infer<typeof studentDetailsSchema>;
+
+/**
+ * IT Admin class filter: "all", a whole stream ("Social Science"), or one Natural Science
+ * section ("Natural Science:A"). Social Science is filtered as one group.
+ */
+export function matchesClassFilter(filter: string, p: { stream: string; section: string }) {
+  if (filter === "all") return true;
+  const [stream, section] = filter.split(":");
+  return p.stream === stream && (!section || p.section.toUpperCase() === section);
+}
+/** Filter choices: every stream, plus each Natural Science section found in the list. */
+export function classFilterOptions(people: { stream: string; section: string }[]) {
+  const streams = [...new Set(people.map((p) => p.stream).filter(Boolean))].sort();
+  const natural = [...new Set(people.filter((p) => p.stream === "Natural Science" && p.section).map((p) => p.section.toUpperCase()))].sort();
+  return streams.flatMap((s) => [{ value: s, label: s === "Natural Science" && natural.length ? "Natural Science (all)" : s }, ...(s === "Natural Science" ? natural.map((x) => ({ value: `${s}:${x}`, label: `Natural Science — Section ${x}` })) : [])]);
+}
+
 /** School year label, e.g. "2026/27". The school year starts in September. */
 export function academicYear(date = new Date()) {
   const y = date.getFullYear();
