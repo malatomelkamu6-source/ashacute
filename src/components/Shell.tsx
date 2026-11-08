@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Crown, Cpu, BookOpen, GraduationCap, MessageCircle, Sparkles } from "lucide-react";
+import { Crown, Cpu, BookOpen, GraduationCap, MessageCircle, BadgeCheck } from "lucide-react";
 import logo from "@/assets/logo.jpg.asset.json";
 import { usePublicState } from "@/lib/live";
 import { isPageVisible } from "@/lib/admin-rules";
@@ -45,7 +45,7 @@ export function Shell({ children, title, subtitle, help = false }: { children: R
             <span className="logo-ring shrink-0"><img src={logo.url} alt="Burka Harbu logo" className="block h-9 w-9 rounded-full sm:h-11 sm:w-11" /></span>
             <div className="min-w-0 leading-tight">
               <div className="text-premium truncate font-display text-sm font-bold sm:text-base">Burka Harbu Special Secondary School</div>
-              <div className="flex items-center gap-1.5 truncate text-xs text-muted-foreground"><Sparkles className="h-3 w-3 shrink-0 text-accent" />Grade 12 National Exam Platform</div>
+              <div className="flex items-center gap-1.5 truncate text-xs text-muted-foreground"><BadgeCheck className="h-3.5 w-3.5 shrink-0 text-accent" />Grade 12 National Exam Platform</div>
             </div>
           </Link>
           <nav className="-mx-1 flex w-full gap-1 overflow-x-auto rounded-full border border-border bg-secondary/60 p-1 shadow-inner md:mx-0 md:ml-auto md:w-auto">
