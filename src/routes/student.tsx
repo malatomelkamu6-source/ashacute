@@ -8,7 +8,7 @@ import { Shell, Panel, Btn } from "@/components/Shell";
 import { LiveCamera } from "@/components/LiveCamera";
 import { canTakeStream } from "@/lib/admin-rules";
 import { fmt } from "@/lib/identity";
-import { HEARTBEAT_MS } from "@/lib/exam-timing";
+import { HEARTBEAT_MS, HELP_COOLDOWN_SEC } from "@/lib/exam-timing";
 import { enterFullscreen, exitFullscreen, inFullscreen, fullscreenSupported, FULLSCREEN_EVENTS } from "@/lib/fullscreen";
 import { usePublicState } from "@/lib/live";
 import { studentExam, studentSync, studentFlag, studentResults, studentHelp } from "@/lib/exam.functions";
