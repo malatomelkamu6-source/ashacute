@@ -14,10 +14,11 @@ For each question:
 - text: the full question wording without its number (keep any passage, table text or formula written inline).
 - options: its choices in order (A, B, C, D ...) without the letter labels.
 - answer: the letter of the correct choice ONLY if the paper itself states it for THAT question number (an answer key entry, a marked/underlined/bold choice or "Answer: X"). If the paper does not state it for that question, answer MUST be null, even if you know the answer. Never solve questions yourself; the teacher will fill in missing answers.
+- answer_evidence: the exact words copied from the paper that show this question's answer (e.g. "1-B" from the answer key, or "Answer: C"); null when the paper shows no answer for it.
 - marks: the marks shown for the question, or 1 if not shown.
 Ignore headers, general instructions, school names and page numbers.`;
 
-const schema = jsonSchema<{ questions: { text: string; options: string[]; answer: string | null; marks: number }[] }>({
+const schema = jsonSchema<{ questions: { text: string; options: string[]; answer: string | null; answer_evidence: string | null; marks: number }[] }>({
   type: "object",
   additionalProperties: false,
   required: ["questions"],
@@ -27,11 +28,12 @@ const schema = jsonSchema<{ questions: { text: string; options: string[]; answer
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["text", "options", "answer", "marks"],
+        required: ["text", "options", "answer", "answer_evidence", "marks"],
         properties: {
           text: { type: "string" },
           options: { type: "array", items: { type: "string" } },
           answer: { type: ["string", "null"] },
+          answer_evidence: { type: ["string", "null"] },
           marks: { type: "number" },
         },
       },
