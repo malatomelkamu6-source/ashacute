@@ -42,3 +42,6 @@
 - [x] Move project to this Lovable Cloud (schema, school list, photo storage, passwords)
 - [ ] Import existing data from the old project (waiting on table exports from the user)
 - [x] IT Admin PIN saved
+- [x] IT Admin: filter by Natural Science section (A/B) and Social Science
+- [x] Scroll helper button on every page; premium dropdown borders and header
+- [x] IT Admin: edit student details (class, stream, gender, batch, registered date)
