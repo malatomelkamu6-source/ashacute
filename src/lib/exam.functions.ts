@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { teacherStream, canTakeStream, teacherCredentialKey, RESULT_PIN, hashResultPin } from "@/lib/admin-rules";
+import { teacherStream, canTakeStream, teacherCredentialKey, RESULT_PIN, hashResultPin, uploadSubjects } from "@/lib/admin-rules";
 import { canStartExam, personalDeadline, remainingSeconds, DISCONNECT_GRACE_SEC, admittedToRoom, activeBankIds } from "@/lib/exam-timing";
 import { normalizeName, requirePasscode, shouldBlock, shuffle, subjectsFor } from "@/lib/identity";
 
@@ -31,7 +31,7 @@ const secondsLeft = remainingSeconds;
 async function settleAttempts(force = false) {
   const sb = await admin();
   if (!force) {
-    const { error: pauseError } = await sb.rpc("pause_disconnected_attempts", { p_grace_sec: DISCONNECT_GRACE_SEC, admittedToRoom, activeBankIds });
+    const { error: pauseError } = await sb.rpc("pause_disconnected_attempts", { p_grace_sec: DISCONNECT_GRACE_SEC });
     if (pauseError) throw new Error("Could not check student connections.");
   }
   let query = sb.from("exam_attempts").select("*").eq("status", "in_progress");
@@ -136,7 +136,7 @@ export const directorDashboard = createServerFn({ method: "POST" })
       const k = key.split("|").slice(0, 2).join("|"); flagCounts[k] = (flagCounts[k] ?? 0) + 1;
     }
     return {
-      settings: { autoSchedule: s.auto_schedule, examLive: s.exam_live, resultsPublished: s.results_published, satEnabled: s.sat_enabled, round: s.current_round, activeBankId: s.active_bank_id, socialBankId: s.social_bank_id, selectedStudentCodes: s.selected_student_codes, durationMin: Math.round(s.duration_sec / 60), extensionMin: s.extension_sec / 60, scheduledStart: s.scheduled_start, scheduledClose: s.scheduled_close, secondsLeft: 0, clockRunning: s.exam_live },
+      settings: { autoClose: s.auto_close, autoCompleted: s.auto_completed, autoSchedule: s.auto_schedule, examLive: s.exam_live, resultsPublished: s.results_published, satEnabled: s.sat_enabled, round: s.current_round, activeBankId: s.active_bank_id, socialBankId: s.social_bank_id, selectedStudentCodes: s.selected_student_codes, durationMin: Math.round(s.duration_sec / 60), extensionMin: s.extension_sec / 60, scheduledStart: s.scheduled_start, scheduledClose: s.scheduled_close, secondsLeft: 0, clockRunning: s.exam_live },
       banks: (banks.data ?? []).map((b) => ({ id: b.id, title: b.title, subject: b.subject, teacherId: b.teacher_id, stream: b.target_stream, count: (b.questions as Question[]).length })),
       students: students.data ?? [],
       participationStudents: s.exam_live && s.scheduled_start && s.scheduled_close ? (students.data ?? []).filter(st => st.face_verified && admittedToRoom(st.student_code, s.selected_student_codes) && (banks.data ?? []).some(b => activeBankIds(s).includes(b.id) && canTakeStream(st.stream, b.target_stream))) : [], attempts: s.exam_live ? attempts.data ?? [] : [], events: events.data ?? [], results: results.data ?? [],
@@ -148,7 +148,8 @@ export const directorDashboard = createServerFn({ method: "POST" })
 export const directorUpdate = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({
     passcode: pass,
-    autoSchedule: z.boolean().optional(), examLive: z.boolean().optional(), resultsPublished: z.boolean().optional(), satEnabled: z.boolean().optional(),
+    autoSchedule: z.boolean().optional(), examLive: z.boolean().optional(), resultsPublished: z.boolean().optional(), satEnabled: z.boolean().optional(), autoClose: z.boolean().optional(),
+    clearStream: z.enum(["Natural Science", "Social Science"]).optional(),
     activeBankId: z.string().uuid().nullable().optional(), selectedStudentCodes: z.array(z.string().min(3).max(30)).max(2000).nullable().optional(), durationMin: z.number().int().min(5).max(600).optional(),
     scheduledStart: z.string().datetime().optional(), scheduledClose: z.string().datetime().optional(),
   }).parse(d))
@@ -164,7 +165,7 @@ export const directorUpdate = createServerFn({ method: "POST" })
       if (!chosen || chosen.status !== "queued" || !chosen.target_stream) throw new Error("Choose a queued paper with a stream.");
       chosenStream = chosen.target_stream;
     }
-    const changingPaper = data.activeBankId !== undefined;
+    const changingPaper = data.activeBankId !== undefined || data.clearStream !== undefined;
     if (s.exam_live && (changingPaper || data.durationMin !== undefined || data.scheduledStart !== undefined || data.scheduledClose !== undefined)) throw new Error("Close the session before changing the paper or schedule. Use Add minutes for active exams.");
     const start = data.scheduledStart ?? s.scheduled_start;
     const close = data.scheduledClose ?? s.scheduled_close;
@@ -172,7 +173,9 @@ export const directorUpdate = createServerFn({ method: "POST" })
     if (data.examLive && (!activeBankIds(s).length || !start || !close || Date.parse(close) <= Date.now())) throw new Error("Choose a paper and a valid exam schedule first.");
     const patch: import("@/integrations/supabase/types").TablesUpdate<"exam_settings"> = { updated_at: now() };
     if (data.autoSchedule !== undefined) patch.auto_schedule = data.autoSchedule;
-    if (data.examLive !== undefined) { patch.exam_live = data.examLive; if (!data.examLive) await settleAttempts(true); }
+    if (data.examLive !== undefined) { patch.exam_live = data.examLive; if (data.examLive) patch.auto_completed = false; else await settleAttempts(true); }
+    if (data.autoClose !== undefined) patch.auto_close = data.autoClose;
+    if (data.clearStream) { if (data.clearStream === "Social Science") patch.social_bank_id = null; else patch.active_bank_id = null; patch.auto_completed = false; }
     if (data.resultsPublished !== undefined) patch.results_published = data.resultsPublished;
     if (data.satEnabled !== undefined) patch.sat_enabled = data.satEnabled;
     if (data.activeBankId !== undefined) { if (chosenStream === "Social Science") patch.social_bank_id = data.activeBankId; else patch.active_bank_id = data.activeBankId; patch.extension_sec = 0; patch.auto_completed = false; }
