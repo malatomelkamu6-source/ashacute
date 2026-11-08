@@ -270,7 +270,7 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
       </form>
     </div>}
     {editing && <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="edit-title">
-      <form className="tile w-full max-w-sm space-y-4" onSubmit={async (e) => {
+      <form className="tile max-h-[90vh] w-full max-w-sm space-y-4 overflow-y-auto" onSubmit={async (e) => {
         e.preventDefault(); setBusy(true); setError("");
         try {
           if (name.trim() !== editing.name) await edit({ data: { passcode, id: editing.id, target: editing.target, name } });
