@@ -125,16 +125,18 @@ function Console({ pass, onPass }: { pass: string; onPass: (p: string) => void }
         </Panel>
 
         <Panel title="Exam queue" icon={<ListChecks className="h-4 w-4" />}>
-          <div className="mb-3 flex flex-wrap gap-2">{["Natural Science", "Social Science"].map(stream => <Btn key={stream} variant={queueStream === stream ? "primary" : "ghost"} onClick={() => setQueueStream(stream)}>{stream}</Btn>)}</div>
+          <div className="mb-3 grid grid-cols-2 gap-2">{["Natural Science", "Social Science"].map(stream => <Btn key={stream} variant={queueStream === stream ? "primary" : "ghost"} className="px-2" onClick={() => setQueueStream(stream)}>{stream.split(" ")[0]}{activeFor(stream) && <CheckCircle2 className="h-3.5 w-3.5" aria-label="Has an active paper" />}</Btn>)}</div>
+          <p className="mb-3 text-xs text-muted-foreground">Pick one paper per stream. Natural and Social papers can be active at the same time, so both streams sit their exam together.</p>
           <div className="max-h-72 space-y-2 overflow-y-auto">
             {d.banks.filter(b => b.stream === queueStream).map(b => <div key={b.id} className="flex items-stretch gap-2">
-              <Btn variant="ghost" disabled={s.examLive} onClick={() => act(() => update({ data: { passcode: pass, activeBankId: b.id } }))} className={`min-w-0 flex-1 justify-start p-3 text-left ${s.activeBankId === b.id ? "border-primary bg-primary/10" : ""}`}>
-                <span className="min-w-0"><span className="block break-words font-semibold">{b.title}</span><span className="block text-xs text-muted-foreground">{b.subject} · {b.count} questions{s.activeBankId === b.id ? " · ACTIVE" : ""}</span></span>
+              <Btn variant="ghost" disabled={s.examLive} onClick={() => act(() => update({ data: { passcode: pass, activeBankId: b.id } }))} className={`min-w-0 flex-1 justify-start p-3 text-left ${isActive(b.id) ? "border-primary bg-primary/10" : ""}`}>
+                <span className="min-w-0"><span className="block break-words font-semibold">{b.title}</span><span className="block text-xs text-muted-foreground">{b.subject} · {b.count} questions{isActive(b.id) ? " · ACTIVE" : ""}</span></span>
               </Btn>
-              <Btn variant="ghost" className="shrink-0 px-2" title={`Remove ${b.title} from queue`} aria-label={`Remove ${b.title} from queue`} disabled={s.examLive && s.activeBankId === b.id} onClick={() => confirm(`Remove ${b.title} from the queue? Saved marks and the teacher's paper remain.`) && act(() => removeBank({ data: { passcode: pass, id: b.id } }))}><Trash2 className="h-4 w-4" /></Btn>
+              <Btn variant="ghost" className="shrink-0 px-2" title={`Remove ${b.title} from queue`} aria-label={`Remove ${b.title} from queue`} disabled={s.examLive && isActive(b.id)} onClick={() => confirm(`Remove ${b.title} from the queue? Saved marks and the teacher's paper remain.`) && act(() => removeBank({ data: { passcode: pass, id: b.id } }))}><Trash2 className="h-4 w-4" /></Btn>
             </div>)}
             {!d.banks.some(b => b.stream === queueStream) && <p className="text-sm text-muted-foreground">No queued exams for {queueStream}.</p>}
           </div>
+          {activeFor(queueStream) && <Btn variant="ghost" className="mt-3 w-full text-xs" disabled={s.examLive} onClick={() => act(() => update({ data: { passcode: pass, clearStream: queueStream as "Natural Science" } }))}><X className="h-3.5 w-3.5" />No exam for {queueStream} this session</Btn>}
         </Panel>
 
       </div>
@@ -176,6 +178,9 @@ function Console({ pass, onPass }: { pass: string; onPass: (p: string) => void }
           </ul>
         </Panel>
       </div>
+
+      <ExamRoom students={d.students} attempts={d.attempts} selected={s.selectedStudentCodes} live={s.examLive} autoSchedule={s.autoSchedule} autoCompleted={s.autoCompleted}
+        onSave={(codes) => act(async () => { await update({ data: { passcode: pass, selectedStudentCodes: codes } }); setNotice(codes === null ? "Every verified student may now start." : `${codes.length} student(s) admitted to the exam room. Everyone else cannot start.`); })} />
 
       <ConnectionLost attempts={d.attempts} nameOf={nameOf} live={s.examLive}
         onResume={(ids) => act(async () => { for (const id of ids) await timeFn({ data: { passcode: pass, attemptId: id, action: "resume" } }); })} />
