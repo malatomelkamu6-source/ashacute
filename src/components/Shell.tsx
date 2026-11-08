@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Crown, Cpu, BookOpen, GraduationCap, MessageCircle } from "lucide-react";
+import { Crown, Cpu, BookOpen, GraduationCap, MessageCircle, Sparkles } from "lucide-react";
 import logo from "@/assets/logo.jpg.asset.json";
 import { usePublicState } from "@/lib/live";
 import { isPageVisible } from "@/lib/admin-rules";
@@ -39,26 +39,26 @@ export function Shell({ children, title, subtitle, help = false }: { children: R
   return (
     <div className="relative min-h-screen">
       <img src={logo.url} alt="" aria-hidden className="pointer-events-none fixed left-1/2 top-1/2 -z-0 w-[560px] max-w-[80vw] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.05]" />
-      <header className="z-30 border-b border-border bg-background/70 backdrop-blur-xl md:sticky md:top-0">
+      <header className="header-premium z-30 backdrop-blur-xl md:sticky md:top-0">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2 sm:px-4 sm:py-3">
           <Link to="/" className="flex min-w-0 items-center gap-3">
-            <img src={logo.url} alt="Burka Harbu logo" className="h-9 w-9 shrink-0 rounded-full ring-1 ring-primary/40 sm:h-10 sm:w-10" />
+            <span className="logo-ring shrink-0"><img src={logo.url} alt="Burka Harbu logo" className="block h-9 w-9 rounded-full sm:h-11 sm:w-11" /></span>
             <div className="min-w-0 leading-tight">
-              <div className="truncate font-display text-sm font-semibold">Burka Harbu Special Secondary School</div>
-              <div className="truncate text-xs text-muted-foreground">Grade 12 National Exam Platform</div>
+              <div className="text-premium truncate font-display text-sm font-bold sm:text-base">Burka Harbu Special Secondary School</div>
+              <div className="flex items-center gap-1.5 truncate text-xs text-muted-foreground"><Sparkles className="h-3 w-3 shrink-0 text-gold" />Grade 12 National Exam Platform</div>
             </div>
           </Link>
-          <nav className="-mx-1 flex w-full gap-1 overflow-x-auto rounded-full border border-border bg-secondary/50 p-1 md:mx-0 md:ml-auto md:w-auto">
+          <nav className="-mx-1 flex w-full gap-1 overflow-x-auto rounded-full border border-border bg-secondary/60 p-1 shadow-inner md:mx-0 md:ml-auto md:w-auto">
             {shownRoles.map((r) => (
               <Link key={r.to} to={r.to} className="flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs sm:px-3 font-medium text-muted-foreground transition hover:text-foreground"
-                activeProps={{ className: "bg-primary text-primary-foreground hover:text-primary-foreground" }}>
+                activeProps={{ className: "bg-primary text-primary-foreground glow hover:text-primary-foreground" }}>
                 <r.icon className="h-3.5 w-3.5" /> {r.label}
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-2"><span className={live ? "dot-live" : "dot-off"} /> Exam {live ? "Live" : "Locked"}</span>
-            <span className="flex items-center gap-2"><span className={published ? "dot-live" : "dot-off"} /> Results {published ? "Out" : "Hidden"}</span>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="status-pill"><span className={live ? "dot-live" : "dot-off"} /> Exam {live ? "Live" : "Locked"}</span>
+            <span className="status-pill"><span className={published ? "dot-live" : "dot-off"} /> Results {published ? "Out" : "Hidden"}</span>
           </div>
         </div>
       </header>

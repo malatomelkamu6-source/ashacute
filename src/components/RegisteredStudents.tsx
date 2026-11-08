@@ -195,7 +195,7 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
       <section aria-label="Directory list" className="min-w-0">
         <div className="mb-2 text-xs text-muted-foreground">{shown.length} records</div>
         <div className="max-h-[650px] overflow-y-auto divide-y divide-border border-y border-border">
-          {shown.map((p) => <div key={p.id} className={`flex items-center gap-2 py-3 ${picked?.id === p.id ? "bg-primary/10" : ""}`}>
+          {shown.map((p) => <div key={p.id} className={`flex items-center gap-2 py-3 ${picked?.id === p.id ? "bg-primary/10 shadow-[inset_3px_0_0_var(--color-accent)]" : ""}`}>
             <Btn variant="ghost" aria-label={`View ${p.name}`} className="min-w-0 flex-1 justify-start border-0 bg-transparent p-2 text-left font-normal" onClick={() => setSelected(p.id)}>
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 font-semibold text-primary">{p.name.split(" ").slice(0, 2).map((n) => n[0]).join("")}</span>
               <span className="min-w-0"><span className="flex items-center gap-1.5 break-words font-semibold">{p.name}{p.verified && <BadgeCheck aria-label="Face verified" className="verified-badge h-4 w-4" />}</span><span className="block break-words text-xs text-muted-foreground">{p.id} · {p.stream}{p.batch ? ` · ${p.batch}` : ""}{p.kind === "student" && p.createdAt ? ` · Registered ${showDate(p.createdAt)}` : ""}</span></span>
