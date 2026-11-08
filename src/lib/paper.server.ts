@@ -39,7 +39,7 @@ const schema = jsonSchema<{ questions: { text: string; options: string[]; answer
   },
 });
 
-export type PaperInput = { fileName: string; mime: string; base64?: string; text?: string };
+export type PaperInput = { fileName: string; mime: string; base64?: string | undefined; text?: string | undefined };
 
 function paperContent(input: PaperInput): ModelMessage["content"] {
   const intro = { type: "text" as const, text: `Extract all multiple-choice questions from the exam paper "${input.fileName}".` };
