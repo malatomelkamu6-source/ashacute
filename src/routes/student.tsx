@@ -443,7 +443,6 @@ function Results({ student }: { student: PublicStudent }) {
         </div>
         <div className="text-center"><Trophy className="mx-auto h-8 w-8 text-warning" /><div className="font-display text-2xl font-bold">{taken.length}/{subs.length}</div><div className="text-xs text-muted-foreground">subjects graded</div></div>
       </div>
-      <div className="mt-6 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-muted-foreground"><th className="p-2">Exam</th><th className="p-2">Round</th><th className="p-2">Marks</th><th className="p-2">Submitted</th></tr></thead><tbody>{data.history.map(a => <tr className="border-t border-border" key={a.id}><td className="p-2">{a.question_banks?.title}</td><td className="p-2">{a.round}</td><td className="p-2 font-mono">{a.score}/{a.total}</td><td className="p-2">{a.submitted_at ? new Date(a.submitted_at).toLocaleString() : "—"}</td></tr>)}</tbody></table></div>
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {subs.map((sub) => { const v = mine[sub]; return (
           <div key={sub} className="rounded-2xl border border-border bg-secondary/30 p-4">
