@@ -266,7 +266,7 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
   useEffect(() => { if (ended && backupKey.current) try { localStorage.removeItem(backupKey.current); } catch { /* ignore */ } }, [ended]);
 
   const push = async (extra: { violation?: "fullscreen" | "focus"; submit?: boolean } = {}) => {
-    if (endedRef.current) return;
+    if (endedRef.current || !backupKey.current) return; // nothing to save until the exam has loaded
     if (typeof navigator !== "undefined" && !navigator.onLine) { goOffline(); return; }
     try {
       // After any loss of contact the server freezes the timer at the last moment it heard from this device.
