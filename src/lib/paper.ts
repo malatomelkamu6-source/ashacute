@@ -63,7 +63,7 @@ export function normalizeScanned(parsed: unknown): ScannedQuestion[] {
 }
 
 /** A figure box (0–1000 page units) widened a little so labels and axes at the edge are not cut off. */
-export function paddedBox(box: [number, number, number, number], pad = 25): [number, number, number, number] {
+export function paddedBox(box: [number, number, number, number], pad = 12): [number, number, number, number] {
   const [x0, y0, x1, y1] = box;
   return [clamp(x0 - pad, 0, 1000), clamp(y0 - pad, 0, 1000), clamp(x1 + pad, 0, 1000), clamp(y1 + pad, 0, 1000)];
 }

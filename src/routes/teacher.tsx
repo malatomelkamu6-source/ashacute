@@ -293,7 +293,7 @@ function Editor({ auth, draft, setDraft, onSave }: { auth: Auth; draft: Draft; s
             {q.passage !== undefined && (
               <div className="mb-3 rounded-lg border border-primary/30 bg-primary/5 p-2">
                 <div className="mb-1 flex items-center justify-between text-xs font-semibold text-primary"><span className="flex items-center gap-1"><BookOpen className="h-3.5 w-3.5" />Reading passage</span><button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => setQ(i, { passage: undefined })}>Remove passage</button></div>
-                <textarea className="field min-h-24 text-sm" value={q.passage} placeholder="Paste or type the passage students read for this question" onChange={(e) => setQ(i, { passage: e.target.value })} />
+                <textarea className="field min-h-24 text-sm" rows={Math.min(16, Math.max(4, (q.passage ?? "").split("\n").length + Math.ceil((q.passage ?? "").length / 100)))} value={q.passage} placeholder="Paste or type the passage students read for this question" onChange={(e) => setQ(i, { passage: e.target.value })} />
               </div>
             )}
             <div className="flex gap-2">
