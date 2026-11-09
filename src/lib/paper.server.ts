@@ -1,5 +1,5 @@
-/* Reads an uploaded exam paper (PDF, photo, or text pulled from Word/text files)
-   and returns its multiple-choice questions in order, each choice in its place. */
+/* Reads an uploaded exam paper (page pictures from a PDF or photo, or text and pictures from a Word/text file)
+   and returns its multiple-choice questions in order, with formulas, reading passages and figure positions. */
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText, Output, jsonSchema, NoObjectGeneratedError, type ModelMessage } from "ai";
 import { createLovableAiGatewayRunIdFetch } from "@/lib/ai/run-id.server";
@@ -8,46 +8,99 @@ import { normalizeScanned, type ScannedQuestion } from "@/lib/paper";
 const GATEWAY = "https://ai.gateway.lovable.dev/v1";
 const MODEL = "openai/gpt-6-astra";
 
-const INSTRUCTIONS = `You read school multiple-choice exam papers and copy their questions exactly.
+const INSTRUCTIONS = `You read school multiple-choice exam papers (Grade 12, Ethiopia) and copy their questions exactly.
 Extract EVERY question in the exact order it appears, never skipping or merging questions.
-For each question:
-- text: the full question wording without its number (keep any passage, table text or formula written inline).
-- options: its choices in order (A, B, C, D ...) without the letter labels.
-- answer: the letter of the correct choice ONLY if the paper itself states it for THAT question number (an answer key entry, a marked/underlined/bold choice or "Answer: X"). If the paper does not state it for that question, answer MUST be null, even if you know the answer. Never solve questions yourself; the teacher will fill in missing answers.
-- answer_evidence: the exact words copied from the paper that show this question's answer (e.g. "1-B" from the answer key, or "Answer: C"); null when the paper shows no answer for it.
-- marks: the marks shown for the question, or 1 if not shown.
-Ignore headers, general instructions, school names and page numbers.`;
 
-const schema = jsonSchema<{ questions: { text: string; options: string[]; answer: string | null; answer_evidence: string | null; marks: number }[] }>({
+For each question:
+- text: the full question wording without its number. Keep line breaks with \\n where the paper breaks lines.
+- options: its choices in order (A, B, C, D ...) without the letter labels.
+- answer: the letter of the correct choice ONLY if the paper itself states it for THAT question number (an answer key entry, a marked/underlined/bold choice or "Answer: X"). Otherwise answer MUST be null, even if you know the answer. Never solve questions yourself.
+- answer_evidence: the exact words copied from the paper that show this question's answer (e.g. "1-B" or "Answer: C"); null when the paper shows none.
+- marks: the marks shown for the question, or 1 if not shown.
+
+FORMULAS AND SYMBOLS (mathematics, physics, chemistry, economics and any other subject):
+- Write every formula, equation, expression, fraction, power, index, root, subscript, Greek letter, vector, angle, unit with powers, inequality, set, matrix, limit, integral, sum and special sign in LaTeX between single dollar signs for inline maths, e.g. $x^2 - 5x + 6 = 0$, $\\frac{3}{4}$, $\\sqrt{2}$, $v = u + at$, $9.8\\,\\text{m/s}^2$, $\\theta = 30^\\circ$, $\\vec{F}$, $\\Omega$, $\\int_0^1 x\\,dx$.
+- Put a long or stand-alone equation on its own line between double dollar signs: $$...$$.
+- Chemistry: write chemical formulas, ions and reactions with \\ce{} inside dollar signs, e.g. $\\ce{H2SO4}$, $\\ce{Fe^{3+}}$, $\\ce{2H2 + O2 -> 2H2O}$, $\\ce{N2 + 3H2 <=> 2NH3}$.
+- Use the same notation inside options.
+- A dollar sign meaning money must be written as \\$ (e.g. \\$500). Ethiopian Birr stays as "Birr".
+- Copy the maths exactly as printed; never simplify or solve it.
+
+READING PASSAGES (English and any subject with a shared text, poem, dialogue, letter, case study or data description):
+- Put each shared passage ONCE in "passages" with a short id ("P1", "P2" ...). Copy it completely and exactly, including its title, with paragraph breaks as \\n\\n and line numbers if printed.
+- Set passage_id on EVERY question that uses that passage; null for other questions.
+- The general instruction line ("Read the passage and answer questions 1-5") is not part of the passage.
+
+FIGURES (graphs, diagrams, drawings, charts, circuits, geometry figures, maps, tables of data, chemical structures, apparatus):
+- When a question needs a picture or table from the paper, set figure. Otherwise figure is null.
+- For page pictures: source "page", index = the page number given before that page picture, and the box around the figure as x0,y0 (top-left) and x1,y1 (bottom-right) in units of 0-1000 of that page's width and height. Make the box enclose the whole figure with its labels, axes, scales and caption, but not the question wording or other questions.
+- If the choices themselves are pictures (e.g. four graphs), include all choice pictures in one box and make each option a short text naming the label printed under it, e.g. "Graph (A)".
+- For Word text: pictures appear as [FIGURE n] markers and are given after the text; use source "embedded", index n and the box 0,0,1000,1000.
+- A small data table may instead be written in the question text with one row per line and cells separated by " | ".
+- If several questions use the same figure, give each of them that figure.
+
+Ignore headers, general instructions, school names, page numbers and blank answer sheets.`;
+
+const nullable = (s: object) => ({ anyOf: [s, { type: "null" }] });
+const schema = jsonSchema<{
+  passages: { id: string; text: string }[];
+  questions: { text: string; options: string[]; answer: string | null; answer_evidence: string | null; marks: number; passage_id: string | null; figure: { source: "page" | "embedded"; index: number; x0: number; y0: number; x1: number; y1: number } | null }[];
+}>({
   type: "object",
   additionalProperties: false,
-  required: ["questions"],
+  required: ["passages", "questions"],
   properties: {
+    passages: {
+      type: "array",
+      items: { type: "object", additionalProperties: false, required: ["id", "text"], properties: { id: { type: "string" }, text: { type: "string" } } },
+    },
     questions: {
       type: "array",
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["text", "options", "answer", "answer_evidence", "marks"],
+        required: ["text", "options", "answer", "answer_evidence", "marks", "passage_id", "figure"],
         properties: {
           text: { type: "string" },
           options: { type: "array", items: { type: "string" } },
           answer: { type: ["string", "null"] },
           answer_evidence: { type: ["string", "null"] },
           marks: { type: "number" },
+          passage_id: { type: ["string", "null"] },
+          figure: nullable({
+            type: "object",
+            additionalProperties: false,
+            required: ["source", "index", "x0", "y0", "x1", "y1"],
+            properties: {
+              source: { type: "string", enum: ["page", "embedded"] },
+              index: { type: "integer" },
+              x0: { type: "number" }, y0: { type: "number" }, x1: { type: "number" }, y1: { type: "number" },
+            },
+          }),
         },
       },
     },
   },
 });
 
-export type PaperInput = { fileName: string; mime: string; base64?: string | undefined; text?: string | undefined };
+export type PaperInput = { fileName: string; subject?: string | undefined; pages?: string[] | undefined; text?: string | undefined; figures?: string[] | undefined };
+
+const jpeg = (b64: string) => ({ type: "image" as const, image: new URL(`data:image/jpeg;base64,${b64}`) });
 
 function paperContent(input: PaperInput): ModelMessage["content"] {
-  const intro = { type: "text" as const, text: `Extract all multiple-choice questions from the exam paper "${input.fileName}".` };
-  if (input.text) return [intro, { type: "text" as const, text: input.text }];
-  if (input.base64 && input.mime === "application/pdf") return [intro, { type: "file" as const, data: input.base64, mediaType: "application/pdf", filename: input.fileName }];
-  if (input.base64 && input.mime.startsWith("image/")) return [intro, { type: "image" as const, image: new URL(`data:${input.mime};base64,${input.base64}`) }];
+  const subject = input.subject ? ` Subject: ${input.subject}.` : "";
+  const parts: Exclude<ModelMessage["content"], string> = [];
+  if (input.pages?.length) {
+    parts.push({ type: "text", text: `Extract all multiple-choice questions from the exam paper "${input.fileName}".${subject} It has ${input.pages.length} page picture(s), each preceded by its page number.` });
+    input.pages.forEach((p, i) => { parts.push({ type: "text", text: `Page ${i + 1}:` }); parts.push(jpeg(p)); });
+    return parts as ModelMessage["content"];
+  }
+  if (input.text) {
+    parts.push({ type: "text", text: `Extract all multiple-choice questions from the exam paper "${input.fileName}".${subject} Its text follows. In the text, ^(x) means superscript and _(x) means subscript.` });
+    parts.push({ type: "text", text: input.text });
+    input.figures?.forEach((f, i) => { parts.push({ type: "text", text: `[FIGURE ${i + 1}]:` }); parts.push(jpeg(f)); });
+    return parts as ModelMessage["content"];
+  }
   throw new Error("This file type can't be read. Upload a PDF, Word (.docx), photo or text file.");
 }
 
