@@ -3,18 +3,32 @@ import { z } from "zod";
 import { teacherStream, canTakeStream, teacherCredentialKey, RESULT_PIN, hashResultPin, uploadSubjects } from "@/lib/admin-rules";
 import { canStartExam, personalDeadline, remainingSeconds, DISCONNECT_GRACE_SEC, admittedToRoom, activeBankIds, HELP_COOLDOWN_SEC, helpMessage } from "@/lib/exam-timing";
 import { normalizeName, requirePasscode, shouldBlock, shuffle, subjectsFor } from "@/lib/identity";
+import { FIGURE_PATH, MAX_OPTION, MAX_PASSAGE, MAX_TEXT, MAX_PAPER_PAGES, groupByPassage } from "@/lib/paper";
 
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }
 
-export type Question = { id: string; text: string; options: [string, string, string, string]; answer: number; marks: number };
+/** `passage` is a shared reading text shown with the question; `figure` is the storage path of its picture. */
+export type Question = { id: string; text: string; options: [string, string, string, string]; answer: number; marks: number; passage?: string | undefined; figure?: string | undefined };
+const opt = z.string().max(MAX_OPTION);
 const questionSchema = z.object({
-  id: z.string().min(1).max(60), text: z.string().trim().min(1).max(2000),
-  options: z.tuple([z.string().max(500), z.string().max(500), z.string().max(500), z.string().max(500)]),
+  id: z.string().min(1).max(60), text: z.string().trim().min(1).max(MAX_TEXT),
+  options: z.tuple([opt, opt, opt, opt]),
   answer: z.number().int().min(0).max(3), marks: z.number().int().min(1).max(10),
+  passage: z.string().trim().max(MAX_PASSAGE).optional().transform((v) => v || undefined),
+  figure: z.string().regex(FIGURE_PATH).optional(),
 });
+const FIGURE_BUCKET = "question-figures";
+/** Short-lived links to question pictures in private storage. */
+async function figureLinks(paths: (string | undefined)[]) {
+  const unique = [...new Set(paths.filter((p): p is string => !!p))];
+  if (!unique.length) return {} as Record<string, string>;
+  const sb = await admin();
+  const { data } = await sb.storage.from(FIGURE_BUCKET).createSignedUrls(unique, 8 * 3600);
+  return Object.fromEntries((data ?? []).filter((d) => d.signedUrl && d.path).map((d) => [d.path!, d.signedUrl]));
+}
 const pass = z.string().min(1).max(200);
 const now = () => new Date().toISOString();
 
@@ -291,21 +305,44 @@ export const teacherSaveBank = createServerFn({ method: "POST" })
     return { id: res.data.id };
   });
 
-const PAPER_MIMES = ["application/pdf", "image/png", "image/jpeg", "image/webp", "text/plain"] as const;
+const b64 = (max: number) => z.string().min(1).max(max).regex(/^[A-Za-z0-9+/=]+$/);
 export const teacherScanPaper = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({
     passcode: pass, teacherId: z.string().max(30),
     fileName: z.string().trim().min(1).max(200),
-    mime: z.enum(PAPER_MIMES),
-    base64: z.string().min(1).max(20_000_000).optional(),
+    subject: z.string().max(40).optional(),
+    pages: z.array(b64(4_000_000)).min(1).max(MAX_PAPER_PAGES).optional(),
     text: z.string().trim().min(1).max(300_000).optional(),
-  }).refine((d) => !!d.base64 !== !!d.text, "Send the file or its text.").parse(d))
+    figures: z.array(b64(3_000_000)).max(40).optional(),
+  }).refine((d) => !!d.pages !== !!d.text, "Send the page pictures or the text.").parse(d))
   .handler(async ({ data }) => {
     await teacher(data.passcode, data.teacherId);
     const { scanPaper } = await import("@/lib/paper.server");
     const questions = await scanPaper(data);
     if (!questions.length) throw new Error("No multiple-choice questions were found in this paper. Check that each question has its choices (A, B, C, D).");
     return { questions };
+  });
+
+/** Saves one question picture (JPEG) into the teacher's private folder. */
+export const teacherUploadFigure = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ passcode: pass, teacherId: z.string().max(30), base64: b64(4_000_000) }).parse(d))
+  .handler(async ({ data }) => {
+    const t = await teacher(data.passcode, data.teacherId);
+    const bytes = Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0));
+    if (bytes[0] !== 0xff || bytes[1] !== 0xd8) throw new Error("The picture must be a JPEG.");
+    const path = `${t.id}/${crypto.randomUUID()}.jpg`;
+    const sb = await admin();
+    const { error } = await sb.storage.from(FIGURE_BUCKET).upload(path, bytes, { contentType: "image/jpeg", upsert: false });
+    if (error) throw new Error("Could not save the picture. Please try again.");
+    return { path, url: (await figureLinks([path]))[path] ?? "" };
+  });
+
+/** Links for the pictures in a teacher's own banks. */
+export const teacherFigureUrls = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ passcode: pass, teacherId: z.string().max(30), paths: z.array(z.string().regex(FIGURE_PATH)).max(600) }).parse(d))
+  .handler(async ({ data }) => {
+    const t = await teacher(data.passcode, data.teacherId);
+    return figureLinks(data.paths.filter((p) => p.startsWith(`${t.id}/`)));
   });
 
 /* ---------------- Student exam ---------------- */
@@ -364,8 +401,11 @@ export const studentExam = createServerFn({ method: "POST" })
       await finalize(att.id, att.answers as Record<string, number>, "submitted", att.violations);
       att.status = "submitted";
     }
-    const paper = shuffle(bank.questions, st.student_code + bank.id + s.current_round).map((q) => ({
-      id: q.id, text: q.text, marks: q.marks,
+    // Questions sharing a reading passage stay together and in order; everything else is shuffled per student.
+    const ordered = shuffle(groupByPassage(bank.questions), st.student_code + bank.id + s.current_round).flat();
+    const links = await figureLinks(ordered.map((q) => q.figure));
+    const paper = ordered.map((q) => ({
+      id: q.id, text: q.text, marks: q.marks, passage: q.passage ?? null, figureUrl: q.figure ? links[q.figure] ?? null : null,
       choices: shuffle([0, 1, 2, 3], st.student_code + q.id + s.current_round).map((orig) => ({ value: orig, label: q.options[orig] })),
     }));
     return { attemptId: att.id, currentQuestion: att.current_question, pauseReason: att.pause_reason, paused: !!att.paused_at && att.status === "in_progress", attemptStatus: att.status, answers: att.answers as Record<string, number>, violations: att.violations, secondsLeft: left, examLive: s.exam_live, title: bank.title, subject: bank.subject, paper };
