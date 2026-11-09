@@ -11,6 +11,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import katexCss from "katex/dist/katex.min.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ScrollHelper } from "../components/ScrollHelper";
 
@@ -94,6 +95,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "stylesheet", href: katexCss },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
   }),

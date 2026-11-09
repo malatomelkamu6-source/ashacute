@@ -6,6 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import logo from "@/assets/logo.jpg.asset.json";
 import { Shell, Panel, Btn } from "@/components/Shell";
 import { LiveCamera } from "@/components/LiveCamera";
+import { MathText, PassageBox, FigureImage } from "@/components/MathText";
 import { canTakeStream } from "@/lib/admin-rules";
 import { fmt } from "@/lib/identity";
 import { HEARTBEAT_MS, HELP_COOLDOWN_SEC } from "@/lib/exam-timing";
@@ -307,6 +308,8 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
       let saved: { answers?: Record<string, number>; idx?: number } = {};
       try { saved = JSON.parse(localStorage.getItem(backupKey.current) ?? "{}"); } catch { /* ignore */ }
       const startAt = Math.min(Math.max(0, saved.idx ?? p.currentQuestion ?? 0), Math.max(0, p.paper.length - 1));
+      // Fetch every picture now so they still show if the internet drops later in the exam.
+      p.paper.forEach((q) => { if (q.figureUrl) { const img = new Image(); img.src = q.figureUrl; } });
       setPaper(p); setAnswers({ ...p.answers, ...(saved.answers ?? {}) }); setIdx(startAt); setViolations(p.violations); setLeft(p.secondsLeft); setPaused(p.paused); setPauseReason(p.pauseReason);
       if (p.attemptStatus === "blocked") setEnded("blocked"); else if (p.attemptStatus === "submitted") setEnded("submitted");
     }).catch((e) => setErr(e instanceof Error ? e.message : "Could not load the exam."));
@@ -436,14 +439,16 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
       <div className="mx-auto grid max-w-6xl gap-4 px-3 py-4 sm:px-4 sm:py-6 lg:grid-cols-[1fr_260px]">
         <div className="glass p-4 sm:p-6">
           <div className="flex items-center justify-between text-xs text-muted-foreground"><span>Question {idx + 1} of {paper.paper.length}</span><span>{cur.marks} mark{cur.marks > 1 ? "s" : ""}</span></div>
-          <h2 className="mt-3 break-words text-lg font-semibold leading-relaxed sm:text-xl">{cur.text}</h2>
+          {cur.passage && <PassageBox key={`p-${cur.id}`} text={cur.passage} className="mt-3" />}
+          <h2 className="mt-3 break-words text-lg font-semibold leading-relaxed sm:text-xl"><MathText text={cur.text} /></h2>
+          {cur.figureUrl && <FigureImage src={cur.figureUrl} className="mt-3" />}
           <div className="mt-6 space-y-3">
             {cur.choices.map((c, k) => {
               const sel = answers[cur.id] === c.value;
               return (
                 <button key={c.value} onClick={() => setAnswers({ ...answers, [cur.id]: c.value })} className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition sm:p-4 ${sel ? "border-primary bg-primary/10 glow" : "border-border hover:border-primary/50"}`}>
                   <span className={`flex h-8 w-8 items-center justify-center rounded-lg font-mono text-sm ${sel ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{"ABCD"[k]}</span>
-                  {c.label}
+                  <span className="min-w-0 flex-1"><MathText text={c.label ?? ""} /></span>
                 </button>
               );
             })}

@@ -2,11 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { FileUp, PenSquare, Send, Trash2, Plus, Lock, Save, Flag, KeyRound, LogOut, Table2, Search, Loader2 } from "lucide-react";
+import { FileUp, PenSquare, Send, Trash2, Plus, Lock, Save, Flag, KeyRound, LogOut, Table2, Search, Loader2, BookOpen, ImagePlus, X, Sigma } from "lucide-react";
+import { MathText, FigureImage } from "@/components/MathText";
+import { hasMath } from "@/lib/math-text";
 import { PAPER_ACCEPT, MAX_PAPER_BYTES, type ScannedQuestion } from "@/lib/paper";
 import logo from "@/assets/logo.jpg.asset.json";
 import { Shell, Panel, Btn } from "@/components/Shell";
-import { listTeachers, teacherDashboard, teacherSaveBank, teacherRemoveBank, teacherRemoveFlag, teacherChangePassword, teacherMarks, teacherScanPaper, type Question } from "@/lib/exam.functions";
+import { listTeachers, teacherDashboard, teacherSaveBank, teacherRemoveBank, teacherRemoveFlag, teacherChangePassword, teacherMarks, teacherScanPaper, teacherUploadFigure, teacherFigureUrls, type Question } from "@/lib/exam.functions";
 
 export const Route = createFileRoute("/teacher")({
   head: () => ({
@@ -124,77 +126,128 @@ function Workspace({ auth, onOut, onPassword }: { auth: { tid: string; pw: strin
               {!data.flags.length && <li className="text-muted-foreground">No flags from students.</li>}
             </ul>
           </Panel>
-          <Importer auth={auth} onImport={(title, qs) => { newBank(title, qs); setMsg(`${qs.length} questions placed in a new bank. Check them, then press “Submit to Director”.`); }} />
+          <Importer auth={auth} subject={subject} onImport={(title, qs) => { newBank(title, qs); setMsg(`${qs.length} questions placed in a new bank. Check them, then press “Submit to Director”.`); }} />
           <TeacherPassword tid={auth.tid} onChanged={onPassword} />
         </div>
-        <div className="lg:col-span-2">{draft ? <Editor draft={draft} setDraft={setDraft} onSave={persist} /> : <Panel title="Editor"><p className="text-sm text-muted-foreground">Create a bank to begin.</p></Panel>}</div>
+        <div className="lg:col-span-2">{draft ? <Editor auth={auth} draft={draft} setDraft={setDraft} onSave={persist} /> : <Panel title="Editor"><p className="text-sm text-muted-foreground">Create a bank to begin.</p></Panel>}</div>
       </div>
       </>}
     </Shell>
   );
 }
 
-const readBase64 = (f: File) => new Promise<string>((res, rej) => {
-  const r = new FileReader();
-  r.onload = () => res(String(r.result).split(",")[1] ?? "");
-  r.onerror = () => rej(new Error("Could not open the file."));
-  r.readAsDataURL(f);
-});
-const IMAGE_MIMES: Record<string, "image/png" | "image/jpeg" | "image/webp"> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp" };
+const IMAGE_EXT = new Set(["png", "jpg", "jpeg", "webp"]);
+/** Pictures cut from a paper this session, shown at once before their storage links are fetched. */
+const localFigureUrls = new Map<string, string>();
+type Auth = { tid: string; pw: string };
 
-function Importer({ auth, onImport }: { auth: { tid: string; pw: string }; onImport: (title: string, q: Question[]) => void }) {
+function useFigureUrls(auth: Auth, paths: (string | undefined)[]) {
+  const get = useServerFn(teacherFigureUrls);
+  const need = [...new Set(paths.filter((p): p is string => !!p && !localFigureUrls.has(p)))].sort();
+  const { data = {} } = useQuery({ queryKey: ["figures", auth.tid, need.join("|")], enabled: need.length > 0, staleTime: 3_600_000, queryFn: () => get({ data: { passcode: auth.pw, teacherId: auth.tid, paths: need } }) });
+  return (path?: string) => (path ? localFigureUrls.get(path) ?? data[path] : undefined);
+}
+
+type Preview = ScannedQuestion & { figurePath?: string | undefined; figureSrc?: string | undefined };
+
+function Importer({ auth, subject, onImport }: { auth: Auth; subject: string; onImport: (title: string, q: Question[]) => void }) {
   const scan = useServerFn(teacherScanPaper);
+  const upload = useServerFn(teacherUploadFigure);
   const [busy, setBusy] = useState(""); const [err, setErr] = useState("");
-  const [preview, setPreview] = useState<{ name: string; qs: ScannedQuestion[] } | null>(null);
+  const [preview, setPreview] = useState<{ name: string; qs: Preview[]; notes: string[] } | null>(null);
   const load = async (f: File) => {
     setErr(""); setPreview(null);
     const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
     if (!f.size) return setErr("This file is empty.");
-    if (f.size > MAX_PAPER_BYTES) return setErr("This file is too large. Please upload a paper under 15 MB.");
+    if (f.size > MAX_PAPER_BYTES) return setErr("This file is too large. Please upload a paper under 25 MB.");
     if (ext === "doc") return setErr("Old Word (.doc) files can't be read. In Word, choose “Save As” → .docx or PDF, then upload again.");
+    const notes: string[] = [];
     try {
       setBusy("Opening the paper…");
-      let payload: { mime: "application/pdf" | "image/png" | "image/jpeg" | "image/webp" | "text/plain"; base64?: string; text?: string };
-      if (ext === "pdf") payload = { mime: "application/pdf", base64: await readBase64(f) };
-      else if (IMAGE_MIMES[ext]) payload = { mime: IMAGE_MIMES[ext]!, base64: await readBase64(f) };
+      const pp = await import("@/lib/paper-pages");
+      let pages: HTMLCanvasElement[] = [], embedded: HTMLCanvasElement[] = [];
+      let payload: { pages?: string[]; text?: string; figures?: string[] };
+      if (ext === "pdf") { pages = await pp.pdfToCanvases(f); payload = { pages: pages.map((c) => pp.canvasBase64(c)) }; }
+      else if (IMAGE_EXT.has(ext)) { pages = [await pp.imageToCanvas(f)]; payload = { pages: pages.map((c) => pp.canvasBase64(c)) }; }
       else if (ext === "docx") {
-        const mammoth = await import("mammoth");
-        const { value } = await mammoth.extractRawText({ arrayBuffer: await f.arrayBuffer() });
-        payload = { mime: "text/plain", text: value };
-      } else if (ext === "txt" || ext === "md") payload = { mime: "text/plain", text: await f.text() };
-      else throw new Error("Please upload a PDF, Word (.docx), photo (JPG/PNG) or text file.");
-      if (payload.text !== undefined && !payload.text.trim()) throw new Error("No text was found in this file. If it is a scanned paper, upload it as a PDF or photo instead.");
-      setBusy("Reading every question and choice… this can take up to a minute for long papers.");
-      const r = await scan({ data: { passcode: auth.pw, teacherId: auth.tid, fileName: f.name, ...payload } });
-      setPreview({ name: f.name, qs: r.questions });
+        const d = await pp.readDocx(f);
+        if (d.text.replace(/\[FIGURE \d+\]/g, "").trim().length < 40 && d.figures.length) { pages = d.figures; payload = { pages: pages.map((c) => pp.canvasBase64(c)) }; }
+        else {
+          if (!d.text.trim()) throw new Error("No text was found in this file. If it is a scanned paper, upload it as a PDF or photo instead.");
+          embedded = d.figures; payload = { text: d.text, figures: embedded.map((c) => pp.canvasBase64(c)) };
+          if (d.hasEquations) notes.push("This Word file has equations made with Word's equation tool, which can't be read from Word. For maths, physics or chemistry papers, choose “Save As → PDF” in Word and upload the PDF so every formula comes through.");
+        }
+      } else if (ext === "txt" || ext === "md") {
+        const text = await f.text();
+        if (!text.trim()) throw new Error("This file is empty.");
+        payload = { text };
+      } else throw new Error("Please upload a PDF, Word (.docx), photo (JPG/PNG) or text file.");
+      setBusy("Reading every question, formula, passage and figure… this can take a minute or two for long papers.");
+      const r = await scan({ data: { passcode: auth.pw, teacherId: auth.tid, fileName: f.name, subject, ...payload } });
+      const cut = new Map<string, { path: string; src: string }>();
+      const qs: Preview[] = [];
+      let failed = 0, done = 0;
+      const figs = r.questions.filter((q) => q.figure).length;
+      for (const q of r.questions) {
+        let figurePath: string | undefined, figureSrc: string | undefined;
+        const src = q.figure ? (q.figure.source === "page" ? pages : embedded)[q.figure.index - 1] : undefined;
+        if (q.figure && src) {
+          setBusy(`Cutting out the graphs and diagrams… ${++done} of ${figs}`);
+          const key = `${q.figure.source}:${q.figure.index}:${q.figure.box.join(",")}`;
+          let hit = cut.get(key);
+          if (!hit) {
+            try {
+              const c = q.figure.source === "page" ? pp.cropFigure(src, q.figure.box) : src;
+              const up = await upload({ data: { passcode: auth.pw, teacherId: auth.tid, base64: pp.canvasBase64(c, 0.88) } });
+              hit = { path: up.path, src: pp.canvasDataUrl(c) };
+              localFigureUrls.set(up.path, hit.src); cut.set(key, hit);
+            } catch { failed++; }
+          }
+          figurePath = hit?.path; figureSrc = hit?.src;
+        }
+        qs.push({ ...q, figurePath, figureSrc });
+      }
+      if (failed) notes.push(`${failed} picture(s) could not be saved. Add them with “Add picture” in the editor.`);
+      setPreview({ name: f.name, qs, notes });
     } catch (e) { setErr(e instanceof Error ? e.message : "Could not read this paper."); }
     finally { setBusy(""); }
   };
   const missing = preview ? preview.qs.filter((q) => q.answer === null).length : 0;
+  const withFig = preview ? preview.qs.filter((q) => q.figurePath).length : 0;
+  const withPassage = preview ? preview.qs.filter((q) => q.passage).length : 0;
+  const withMath = preview ? preview.qs.filter((q) => hasMath(q.text) || q.options.some(hasMath)).length : 0;
   return (
     <Panel title="Exam paper importer" icon={<FileUp className="h-4 w-4" />}>
       <label className={`block rounded-xl border-2 border-dashed border-border p-5 text-center text-sm ${busy ? "cursor-wait opacity-60" : "cursor-pointer hover:border-primary"}`}>
-        {busy ? <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin text-primary" />{busy}</span> : <>Upload exam paper<span className="mt-1 block text-xs text-muted-foreground">PDF, Word (.docx), photo or text</span></>}
+        {busy ? <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />{busy}</span> : <>Upload {subject} exam paper<span className="mt-1 block text-xs text-muted-foreground">PDF, Word (.docx), photo or text</span></>}
         <input type="file" accept={PAPER_ACCEPT} hidden disabled={!!busy} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) load(f); }} />
       </label>
-      <p className="mt-2 text-xs text-muted-foreground">The system reads each question and puts its choices A–D in their places. Answers are filled in when the paper shows them.</p>
+      <p className="mt-2 text-xs text-muted-foreground">The system reads each question and puts its choices A–D in their places. Formulas and signs, reading passages, graphs, diagrams and tables are kept too. Answers are filled in when the paper shows them.</p>
       {err && <p role="alert" className="mt-2 text-xs text-destructive">{err}</p>}
       {preview && (
         <div className="mt-3 space-y-2">
           <div className="break-words text-xs font-medium">{preview.name}</div>
-          <div className="text-xs text-accent">{preview.qs.length} questions found</div>
+          <div className="flex flex-wrap gap-1.5 text-[11px]">
+            <span className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-accent">{preview.qs.length} questions</span>
+            {withMath > 0 && <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-primary">{withMath} with formulas</span>}
+            {withFig > 0 && <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-primary">{withFig} with figures</span>}
+            {withPassage > 0 && <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-primary">{withPassage} with a passage</span>}
+          </div>
+          {preview.notes.map((n) => <p key={n} className="rounded-lg border border-warning/40 bg-warning/10 p-2 text-xs text-warning">{n}</p>)}
           {missing > 0 && <p className="rounded-lg border border-warning/40 bg-warning/10 p-2 text-xs text-warning">{missing} question(s) have no answer on the paper. Choose the correct answer for them in the editor before submitting.</p>}
-          <ol className="max-h-56 space-y-2 overflow-y-auto rounded-lg border border-border p-2 text-xs">
+          <ol className="max-h-96 space-y-3 overflow-y-auto rounded-lg border border-border p-2 text-xs">
             {preview.qs.map((q, i) => (
-              <li key={i}>
-                <div className="break-words font-medium"><span className="text-primary">{i + 1}.</span> {q.text}</div>
-                <div className="mt-0.5 grid gap-x-3 sm:grid-cols-2">{q.options.map((o, k) => o && <span key={k} className={`break-words ${q.answer === k ? "text-accent" : "text-muted-foreground"}`}>{"ABCD"[k]}. {o}</span>)}</div>
+              <li key={i} className="space-y-1">
+                {q.passage && (i === 0 || preview.qs[i - 1]?.passage !== q.passage) && <div className="line-clamp-3 rounded-md border border-primary/30 bg-primary/5 p-1.5 text-muted-foreground"><b className="text-primary">Passage: </b>{q.passage}</div>}
+                <div className="font-medium"><span className="text-primary">{i + 1}.</span> <MathText text={q.text} /></div>
+                {q.figureSrc && <img src={q.figureSrc} alt={`Figure for question ${i + 1}`} className="max-h-32 rounded border border-border" />}
+                <div className="grid gap-x-3 sm:grid-cols-2">{q.options.map((o, k) => o && <span key={k} className={q.answer === k ? "text-accent" : "text-muted-foreground"}>{"ABCD"[k]}. <MathText text={o} /></span>)}</div>
               </li>
             ))}
           </ol>
           <Btn className="w-full" onClick={() => {
             const stamp = Date.now();
-            onImport(preview.name.replace(/\.\w+$/, "").slice(0, 120), preview.qs.map((q, i) => ({ id: `q${stamp}${i}`, text: q.text, options: q.options, answer: q.answer ?? 0, marks: q.marks })));
+            onImport(preview.name.replace(/\.\w+$/, "").slice(0, 120), preview.qs.map((q, i) => ({ id: `q${stamp}${i}`, text: q.text, options: q.options, answer: q.answer ?? 0, marks: q.marks, passage: q.passage ?? undefined, figure: q.figurePath })));
             setPreview(null);
           }}>Create bank from paper</Btn>
         </div>
@@ -203,9 +256,24 @@ function Importer({ auth, onImport }: { auth: { tid: string; pw: string }; onImp
   );
 }
 
-function Editor({ draft, setDraft, onSave }: { draft: Draft; setDraft: (d: Draft) => void; onSave: (s: Draft["status"]) => void }) {
+function Editor({ auth, draft, setDraft, onSave }: { auth: Auth; draft: Draft; setDraft: (d: Draft) => void; onSave: (s: Draft["status"]) => void }) {
+  const upload = useServerFn(teacherUploadFigure);
+  const figureUrl = useFigureUrls(auth, draft.questions.map((q) => q.figure));
+  const [picBusy, setPicBusy] = useState<string | null>(null); const [picErr, setPicErr] = useState("");
   const update = (fn: (qs: Question[]) => Question[]) => setDraft({ ...draft, questions: fn(draft.questions) });
   const setQ = (i: number, patch: Partial<Question>) => update((qs) => qs.map((q, j) => j === i ? { ...q, ...patch } : q));
+  const addPicture = async (i: number, id: string, f: File) => {
+    setPicErr(""); setPicBusy(id);
+    try {
+      if (!/^image\//.test(f.type)) throw new Error("Choose a photo or picture file (JPG or PNG).");
+      const pp = await import("@/lib/paper-pages");
+      const c = await pp.imageToCanvas(f, 1400);
+      const up = await upload({ data: { passcode: auth.pw, teacherId: auth.tid, base64: pp.canvasBase64(c, 0.88) } });
+      localFigureUrls.set(up.path, pp.canvasDataUrl(c));
+      setQ(i, { figure: up.path });
+    } catch (e) { setPicErr(e instanceof Error ? e.message : "Could not add the picture."); }
+    finally { setPicBusy(null); }
+  };
   const totalMarks = draft.questions.reduce((a, q) => a + q.marks, 0);
   return (
     <Panel title={`${draft.subject} · ${draft.title}`} icon={<PenSquare className="h-4 w-4" />}
@@ -214,14 +282,30 @@ function Editor({ draft, setDraft, onSave }: { draft: Draft; setDraft: (d: Draft
         <input className="field" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
         <span className="whitespace-nowrap text-xs text-muted-foreground">{draft.questions.length} Q · {totalMarks} marks</span>
       </div>
+      <p className="mb-3 rounded-lg border border-border bg-secondary/40 p-2 text-xs text-muted-foreground"><Sigma className="mr-1 inline h-3.5 w-3.5 text-primary" />Formulas: type them between $ signs, e.g. <code>$x^2+\frac{"{1}{2}"}$</code>, <code>$\sqrt{"{3}"}$</code>, <code>$\ce{"{H2SO4}"}$</code>. A preview under the question shows exactly how students will see it.</p>
+      {picErr && <p role="alert" className="mb-2 text-xs text-destructive">{picErr}</p>}
       <div className="space-y-3">
-        {draft.questions.map((q, i) => (
+        {draft.questions.map((q, i) => {
+          const url = figureUrl(q.figure);
+          const showPreview = hasMath(q.text) || q.options.some(hasMath);
+          return (
           <div key={q.id} className="rounded-xl border border-border p-4">
+            {q.passage !== undefined && (
+              <div className="mb-3 rounded-lg border border-primary/30 bg-primary/5 p-2">
+                <div className="mb-1 flex items-center justify-between text-xs font-semibold text-primary"><span className="flex items-center gap-1"><BookOpen className="h-3.5 w-3.5" />Reading passage</span><button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => setQ(i, { passage: undefined })}>Remove passage</button></div>
+                <textarea className="field min-h-24 text-sm" rows={Math.min(16, Math.max(4, (q.passage ?? "").split("\n").length + Math.ceil((q.passage ?? "").length / 100)))} value={q.passage} placeholder="Paste or type the passage students read for this question" onChange={(e) => setQ(i, { passage: e.target.value })} />
+              </div>
+            )}
             <div className="flex gap-2">
               <span className="font-mono text-sm text-primary">{i + 1}.</span>
               <textarea className="field min-h-14" value={q.text} placeholder="Question text" onChange={(e) => setQ(i, { text: e.target.value })} />
               <button aria-label="Delete question" onClick={() => update((qs) => qs.filter((_, j) => j !== i))} className="self-start text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
             </div>
+            {q.figure && (
+              <div className="mt-3 space-y-1">
+                {url ? <FigureImage src={url} className="max-h-64" /> : <div className="flex h-24 items-center justify-center rounded-lg border border-border text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /></div>}
+              </div>
+            )}
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {q.options.map((o, k) => (
                 <label key={k} className={`flex items-center gap-2 rounded-lg border p-1.5 pl-2 ${q.answer === k ? "border-accent bg-accent/10" : "border-border"}`}>
@@ -231,9 +315,27 @@ function Editor({ draft, setDraft, onSave }: { draft: Draft; setDraft: (d: Draft
                 </label>
               ))}
             </div>
-            <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">Marks <input type="number" min={1} max={10} className="field w-20 py-1" value={q.marks} onChange={(e) => setQ(i, { marks: Math.min(10, Math.max(1, +e.target.value)) })} /> · Correct answer: <b className="text-accent">{"ABCD"[q.answer]}</b></div>
+            {showPreview && (
+              <div className="mt-3 rounded-lg border border-dashed border-primary/40 p-2 text-sm">
+                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-primary">Students will see</div>
+                <MathText text={q.text} />
+                <div className="mt-1 grid gap-x-3 text-muted-foreground sm:grid-cols-2">{q.options.map((o, k) => o && <span key={k}>{"ABCD"[k]}. <MathText text={o} /></span>)}</div>
+              </div>
+            )}
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              Marks <input type="number" min={1} max={10} className="field w-20 py-1" value={q.marks} onChange={(e) => setQ(i, { marks: Math.min(10, Math.max(1, +e.target.value)) })} /> · Correct answer: <b className="text-accent">{"ABCD"[q.answer]}</b>
+              <span className="ml-auto flex flex-wrap gap-1.5">
+                {q.passage === undefined && <button type="button" className="flex items-center gap-1 rounded-full border border-border px-2 py-1 hover:border-primary hover:text-primary" onClick={() => setQ(i, { passage: i > 0 ? draft.questions[i - 1]?.passage ?? "" : "" })}><BookOpen className="h-3.5 w-3.5" />Add passage</button>}
+                <label className={`flex cursor-pointer items-center gap-1 rounded-full border border-border px-2 py-1 hover:border-primary hover:text-primary ${picBusy === q.id ? "opacity-60" : ""}`}>
+                  {picBusy === q.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}{q.figure ? "Replace picture" : "Add picture"}
+                  <input type="file" accept="image/*" hidden disabled={!!picBusy} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) addPicture(i, q.id, f); }} />
+                </label>
+                {q.figure && <button type="button" className="flex items-center gap-1 rounded-full border border-border px-2 py-1 hover:border-destructive hover:text-destructive" onClick={() => setQ(i, { figure: undefined })}><X className="h-3.5 w-3.5" />Remove picture</button>}
+              </span>
+            </div>
           </div>
-        ))}
+          );
+        })}
         <Btn variant="ghost" className="w-full" onClick={() => update((qs) => [...qs, { id: `q${Date.now()}`, text: "", options: ["", "", "", ""], answer: 0, marks: 1 }])}><Plus className="h-4 w-4" />Add question</Btn>
       </div>
     </Panel>
