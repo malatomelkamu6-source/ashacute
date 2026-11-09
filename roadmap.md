@@ -52,3 +52,4 @@
 - [x] Closing waits for students with extra or paused time; with Auto close the Director only opens the exam
 - [x] Student results refresh by themselves after the Director adds marks for a flagged question
 - [x] Exam Help button sends the student name, ID and class to the Director
+- [x] Paper import keeps formulas/symbols, reading passages and graphs/diagrams/tables; exam screen shows them
