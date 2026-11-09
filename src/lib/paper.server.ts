@@ -1,7 +1,7 @@
 /* Reads an uploaded exam paper (page pictures from a PDF or photo, or text and pictures from a Word/text file)
    and returns its multiple-choice questions in order, with formulas, reading passages and figure positions. */
 import { createOpenAI } from "@ai-sdk/openai";
-import { streamText, Output, jsonSchema, NoObjectGeneratedError, type ModelMessage } from "ai";
+import { streamText, Output, jsonSchema, NoObjectGeneratedError, type ModelMessage, type UserContent } from "ai";
 import { createLovableAiGatewayRunIdFetch } from "@/lib/ai/run-id.server";
 import { normalizeScanned, type ScannedQuestion } from "@/lib/paper";
 
@@ -87,19 +87,19 @@ export type PaperInput = { fileName: string; subject?: string | undefined; pages
 
 const jpeg = (b64: string) => ({ type: "image" as const, image: new URL(`data:image/jpeg;base64,${b64}`) });
 
-function paperContent(input: PaperInput): ModelMessage["content"] {
+function paperContent(input: PaperInput): UserContent {
   const subject = input.subject ? ` Subject: ${input.subject}.` : "";
-  const parts: Exclude<ModelMessage["content"], string> = [];
+  const parts: Exclude<UserContent, string> = [];
   if (input.pages?.length) {
     parts.push({ type: "text", text: `Extract all multiple-choice questions from the exam paper "${input.fileName}".${subject} It has ${input.pages.length} page picture(s), each preceded by its page number.` });
     input.pages.forEach((p, i) => { parts.push({ type: "text", text: `Page ${i + 1}:` }); parts.push(jpeg(p)); });
-    return parts as ModelMessage["content"];
+    return parts;
   }
   if (input.text) {
     parts.push({ type: "text", text: `Extract all multiple-choice questions from the exam paper "${input.fileName}".${subject} Its text follows. In the text, ^(x) means superscript and _(x) means subscript.` });
     parts.push({ type: "text", text: input.text });
     input.figures?.forEach((f, i) => { parts.push({ type: "text", text: `[FIGURE ${i + 1}]:` }); parts.push(jpeg(f)); });
-    return parts as ModelMessage["content"];
+    return parts;
   }
   throw new Error("This file type can't be read. Upload a PDF, Word (.docx), photo or text file.");
 }
@@ -129,7 +129,7 @@ export async function scanPaper(input: PaperInput): Promise<ScannedQuestion[]> {
   const result = streamText({
     model: provider.responses(MODEL),
     instructions: INSTRUCTIONS,
-    messages: [{ role: "user", content } as ModelMessage],
+    messages: [{ role: "user", content } satisfies ModelMessage],
     output: Output.object({ schema }),
     onError: ({ error }) => { streamError = error; },
     providerOptions: {

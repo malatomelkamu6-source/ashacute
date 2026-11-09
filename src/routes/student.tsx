@@ -448,7 +448,7 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
               return (
                 <button key={c.value} onClick={() => setAnswers({ ...answers, [cur.id]: c.value })} className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition sm:p-4 ${sel ? "border-primary bg-primary/10 glow" : "border-border hover:border-primary/50"}`}>
                   <span className={`flex h-8 w-8 items-center justify-center rounded-lg font-mono text-sm ${sel ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{"ABCD"[k]}</span>
-                  <span className="min-w-0 flex-1"><MathText text={c.label} /></span>
+                  <span className="min-w-0 flex-1"><MathText text={c.label ?? ""} /></span>
                 </button>
               );
             })}

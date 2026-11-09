@@ -8,7 +8,8 @@ export async function pdfToCanvases(file: File): Promise<HTMLCanvasElement[]> {
   const pdfjs = await import("pdfjs-dist");
   const worker = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
   pdfjs.GlobalWorkerOptions.workerSrc = worker;
-  const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
+  const doc = await task.promise;
   if (doc.numPages > MAX_PAPER_PAGES) throw new Error(`This PDF has ${doc.numPages} pages. Please upload at most ${MAX_PAPER_PAGES} pages at a time (split the paper into parts).`);
   const out: HTMLCanvasElement[] = [];
   for (let n = 1; n <= doc.numPages; n++) {
@@ -22,7 +23,7 @@ export async function pdfToCanvases(file: File): Promise<HTMLCanvasElement[]> {
     await page.render({ canvas, canvasContext: ctx, viewport }).promise;
     out.push(canvas);
   }
-  await doc.destroy();
+  await task.destroy();
   return out;
 }
 
