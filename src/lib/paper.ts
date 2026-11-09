@@ -69,6 +69,26 @@ export function paddedBox(box: [number, number, number, number], pad = 12): [num
 }
 
 /**
+ * Rows to keep after cutting a figure: a thin strip of ink touching the top or bottom edge, separated from
+ * the figure by blank rows, is the cut-off edge of a neighbouring text line and is dropped.
+ * `ink[r]` tells whether row r has any dark pixel. Returns [first row, last row + 1].
+ */
+export function edgeTrim(ink: boolean[], maxBandFrac = 0.07, minGap = 4): [number, number] {
+  const n = ink.length, maxBand = Math.max(2, Math.floor(n * maxBandFrac));
+  const cut = (rows: boolean[]) => {
+    if (!rows[0]) return 0;
+    let r = 0;
+    while (r < rows.length && rows[r]) r++;
+    if (r > maxBand) return 0;
+    let g = r;
+    while (g < rows.length && !rows[g]) g++;
+    return g - r >= minGap && g < rows.length ? r : 0;
+  };
+  const top = cut(ink), bottom = cut([...ink].reverse());
+  return top + bottom < n * 0.5 ? [top, n - bottom] : [0, n];
+}
+
+/**
  * Splits a paper into blocks that are shuffled as one: questions next to each other that share a
  * reading passage stay together and in their order, every other question is its own block.
  */

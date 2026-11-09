@@ -1,6 +1,6 @@
 /* Browser-only: turns an uploaded paper into page pictures and cuts figures out of them.
    Import this module dynamically from event handlers only. */
-import { MAX_PAPER_PAGES, paddedBox } from "@/lib/paper";
+import { MAX_PAPER_PAGES, paddedBox, edgeTrim } from "@/lib/paper";
 
 const PAGE_WIDTH = 1500;
 
@@ -46,8 +46,18 @@ export const canvasDataUrl = (c: HTMLCanvasElement, quality = 0.85) => c.toDataU
 /** Cuts a figure (box in 0–1000 page units) out of a page, with a small margin, at most 1400px wide. */
 export function cropFigure(page: HTMLCanvasElement, box: [number, number, number, number]): HTMLCanvasElement {
   const [x0, y0, x1, y1] = paddedBox(box);
-  const sx = Math.round((x0 / 1000) * page.width), sy = Math.round((y0 / 1000) * page.height);
-  const sw = Math.max(1, Math.round(((x1 - x0) / 1000) * page.width)), sh = Math.max(1, Math.round(((y1 - y0) / 1000) * page.height));
+  const sx = Math.round((x0 / 1000) * page.width);
+  let sy = Math.round((y0 / 1000) * page.height);
+  const sw = Math.max(1, Math.round(((x1 - x0) / 1000) * page.width));
+  let sh = Math.max(1, Math.round(((y1 - y0) / 1000) * page.height));
+  // Drop slivers of the question text above or below that the box clipped.
+  const px = page.getContext("2d")!.getImageData(sx, sy, sw, sh).data;
+  const ink = Array.from({ length: sh }, (_, r) => {
+    for (let c = 0; c < sw; c += 2) { const k = (r * sw + c) * 4; if (px[k]! + px[k + 1]! + px[k + 2]! < 420) return true; }
+    return false;
+  });
+  const [top, end] = edgeTrim(ink);
+  sy += top; sh = end - top;
   const s = Math.min(1, 1400 / sw);
   const c = document.createElement("canvas");
   c.width = Math.round(sw * s); c.height = Math.round(sh * s);

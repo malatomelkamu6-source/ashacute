@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeScanned, paddedBox, groupByPassage } from "@/lib/paper";
+import { normalizeScanned, paddedBox, groupByPassage, edgeTrim } from "@/lib/paper";
 import { splitMath } from "@/lib/math-text";
 
 describe("formulas in question text", () => {
@@ -32,6 +32,13 @@ describe("passages and figures from scanned papers", () => {
   });
   it("widens a figure box without going off the page", () => {
     expect(paddedBox([10, 100, 990, 500], 25)).toEqual([0, 75, 1000, 525]);
+  });
+  it("drops a clipped text line at the top or bottom of a cut-out figure", () => {
+    const rows = (pattern: string) => [...pattern].map((c) => c === "#");
+    // 3 inked rows of clipped text, a gap, the figure, a gap, 2 inked rows of clipped text
+    expect(edgeTrim(rows("###......" + "#".repeat(80) + "......##"), 0.07, 4)).toEqual([3, 95]);
+    // a figure that starts right at the edge with no gap is left whole
+    expect(edgeTrim(rows("#".repeat(60) + "...."), 0.07, 4)).toEqual([0, 64]);
   });
   it("keeps questions of one passage together when the paper is shuffled", () => {
     const qs = [{ id: 1, passage: "P" }, { id: 2, passage: "P" }, { id: 3 }, { id: 4, passage: "Q" }];
