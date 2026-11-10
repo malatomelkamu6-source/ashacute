@@ -404,6 +404,177 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_broadcasts: {
+        Row: {
+          audience: string
+          created_at: string
+          failed: number
+          id: string
+          kind: string
+          message: string
+          sent: number
+        }
+        Insert: {
+          audience: string
+          created_at?: string
+          failed?: number
+          id?: string
+          kind?: string
+          message: string
+          sent?: number
+        }
+        Update: {
+          audience?: string
+          created_at?: string
+          failed?: number
+          id?: string
+          kind?: string
+          message?: string
+          sent?: number
+        }
+        Relationships: []
+      }
+      telegram_messages: {
+        Row: {
+          chat_id: number
+          created_at: string
+          direction: string
+          handled_at: string | null
+          id: string
+          kind: string
+          text: string | null
+          update_id: number | null
+        }
+        Insert: {
+          chat_id: number
+          created_at?: string
+          direction: string
+          handled_at?: string | null
+          id?: string
+          kind?: string
+          text?: string | null
+          update_id?: number | null
+        }
+        Update: {
+          chat_id?: number
+          created_at?: string
+          direction?: string
+          handled_at?: string | null
+          id?: string
+          kind?: string
+          text?: string | null
+          update_id?: number | null
+        }
+        Relationships: []
+      }
+      telegram_settings: {
+        Row: {
+          bot_enabled: boolean
+          help_message: string
+          id: number
+          last_exam_live: boolean | null
+          last_registration_open: boolean | null
+          last_results_published: boolean | null
+          notify_exam_live: boolean
+          notify_registration: boolean
+          notify_results: boolean
+          portal_url: string
+          results_enabled: boolean
+          updated_at: string
+          welcome_message: string
+        }
+        Insert: {
+          bot_enabled?: boolean
+          help_message?: string
+          id?: number
+          last_exam_live?: boolean | null
+          last_registration_open?: boolean | null
+          last_results_published?: boolean | null
+          notify_exam_live?: boolean
+          notify_registration?: boolean
+          notify_results?: boolean
+          portal_url?: string
+          results_enabled?: boolean
+          updated_at?: string
+          welcome_message?: string
+        }
+        Update: {
+          bot_enabled?: boolean
+          help_message?: string
+          id?: number
+          last_exam_live?: boolean | null
+          last_registration_open?: boolean | null
+          last_results_published?: boolean | null
+          notify_exam_live?: boolean
+          notify_registration?: boolean
+          notify_results?: boolean
+          portal_url?: string
+          results_enabled?: boolean
+          updated_at?: string
+          welcome_message?: string
+        }
+        Relationships: []
+      }
+      telegram_users: {
+        Row: {
+          blocked: boolean
+          chat_id: number
+          entered_name: string | null
+          first_name: string | null
+          id_confirmed: boolean
+          language_code: string | null
+          last_name: string | null
+          last_seen_at: string
+          linked_at: string | null
+          pin_failures: number
+          pin_locked_until: string | null
+          started_at: string
+          state: string
+          state_data: Json
+          student_code: string | null
+          telegram_user_id: number | null
+          username: string | null
+        }
+        Insert: {
+          blocked?: boolean
+          chat_id: number
+          entered_name?: string | null
+          first_name?: string | null
+          id_confirmed?: boolean
+          language_code?: string | null
+          last_name?: string | null
+          last_seen_at?: string
+          linked_at?: string | null
+          pin_failures?: number
+          pin_locked_until?: string | null
+          started_at?: string
+          state?: string
+          state_data?: Json
+          student_code?: string | null
+          telegram_user_id?: number | null
+          username?: string | null
+        }
+        Update: {
+          blocked?: boolean
+          chat_id?: number
+          entered_name?: string | null
+          first_name?: string | null
+          id_confirmed?: boolean
+          language_code?: string | null
+          last_name?: string | null
+          last_seen_at?: string
+          linked_at?: string | null
+          pin_failures?: number
+          pin_locked_until?: string | null
+          started_at?: string
+          state?: string
+          state_data?: Json
+          student_code?: string | null
+          telegram_user_id?: number | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
