@@ -93,6 +93,9 @@ export const adminResetStaffPassword = createServerFn({ method: "POST" })
 export const getPublicState = createServerFn({ method: "GET" }).handler(async () => {
   await settleAttempts();
   const s = await settings();
+  // Tells Telegram bot users when the exam goes live, results are published or registration opens (once per change).
+  const { notifyStatusChanges } = await import("@/lib/telegram.server");
+  await notifyStatusChanges().catch((e) => console.error("Telegram notice failed", e));
   const sb = await admin();
   let bank: { id: string; title: string; subject: string; count: number; marks: number; stream: string | null } | null = null;
   if (s.active_bank_id) {

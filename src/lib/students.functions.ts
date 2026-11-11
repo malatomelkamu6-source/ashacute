@@ -129,6 +129,8 @@ export const adminSetRegistration = createServerFn({ method: "POST" })
     const sb = await admin();
     const { error } = await sb.from("exam_settings").upsert({ id: 1, registration_open: data.open, updated_at: new Date().toISOString() });
     if (error) throw new Error("Could not update registration.");
+    const { notifyStatusChanges } = await import("@/lib/telegram.server");
+    await notifyStatusChanges().catch((e) => console.error("Telegram notice failed", e));
     return { ok: true };
   });
 
@@ -339,6 +341,7 @@ export const adminDeletePerson = createServerFn({ method: "POST" })
         const { error } = await sb.from(table).delete().eq("student_code", data.id);
         if (error) throw new Error("Could not remove this student's exam records.");
       }
+      await sb.from("telegram_users").update({ student_code: null, id_confirmed: false, state: "await_name" }).eq("student_code", data.id);
       const { error } = await sb.from("registered_students").delete().eq("student_code", data.id);
       if (error) throw new Error("Could not remove this student's registration.");
       if (reg?.photo_path) await sb.storage.from(BUCKET).remove([reg.photo_path]);

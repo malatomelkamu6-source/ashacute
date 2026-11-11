@@ -10,6 +10,8 @@ import { adminResetStaffPassword } from "@/lib/exam.functions";
 import { matchesPerson } from "@/lib/results";
 import { TeacherRosterTools } from "@/components/TeacherRosterTools";
 import { Toggle } from "@/components/Shell";
+import { TelegramBotPanel } from "@/components/TelegramBotPanel";
+import { Bot } from "lucide-react";
 
 type Directory = Awaited<ReturnType<typeof adminDirectory>>;
 const PAGE_LABEL: Record<string, string> = { director: "Director", "it-admin": "IT Admin", teacher: "Teachers" };
@@ -66,7 +68,7 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
   const [staffMsg, setStaffMsg] = useState("");
   const [resetTeacher, setResetTeacher] = useState("");
   const [directory, setDirectory] = useState(initial);
-  const [view, setView] = useState<"registered" | "students" | "teachers">("registered");
+  const [view, setView] = useState<"registered" | "students" | "teachers" | "bot">("registered");
   const [query, setQuery] = useState("");
   const [stream, setStream] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
@@ -166,8 +168,9 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
       </div>
     </div>
     <div role="tablist" aria-label="School directory" className="mb-5 flex flex-wrap gap-2">
-      {([{ key: "registered", label: "Registered students", icon: ScanFace }, { key: "students", label: "Student List", icon: Users }, { key: "teachers", label: "Teachers", icon: BookOpen }] as const).map((t) => <Btn key={t.key} role="tab" aria-selected={view === t.key} variant={view === t.key ? "primary" : "ghost"} onClick={() => { setView(t.key); setSelected(null); setQuery(""); setStream("all"); setMessage(""); }}><t.icon className="h-4 w-4" />{t.label}</Btn>)}
+      {([{ key: "registered", label: "Registered students", icon: ScanFace }, { key: "students", label: "Student List", icon: Users }, { key: "teachers", label: "Teachers", icon: BookOpen }, { key: "bot", label: "Telegram Bot", icon: Bot }] as const).map((t) => <Btn key={t.key} role="tab" aria-selected={view === t.key} variant={view === t.key ? "primary" : "ghost"} onClick={() => { setView(t.key); setSelected(null); setQuery(""); setStream("all"); setMessage(""); }}><t.icon className="h-4 w-4" />{t.label}</Btn>)}
     </div>
+    {view === "bot" ? <TelegramBotPanel passcode={passcode} /> : <>
     <div className="mb-4 flex flex-wrap items-center gap-3">
       <div className="relative w-full max-w-sm"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><input aria-label="Search directory" className="field pl-9" placeholder="Search name or ID" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
       <select aria-label="Filter by stream and section" className="field w-auto max-w-full" value={stream} onChange={(e) => setStream(e.target.value)}><option value="all">All streams &amp; sections</option>{filterOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
@@ -253,6 +256,7 @@ export function RegisteredStudents({ passcode, initial, onLock }: { passcode: st
         </>}
       </aside>
     </div>
+    </>}
     {pinFor && <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="pin-title">
       <form className="tile w-full max-w-sm space-y-4" onSubmit={async (e) => {
         e.preventDefault(); setError("");
