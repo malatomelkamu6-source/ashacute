@@ -32,7 +32,7 @@ function Index() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:py-12">
       <div className="flex flex-col items-center text-center">
-        <img src={logo.url} alt="Burka Harbu Special Secondary School logo" className="h-28 w-28 rounded-full ring-2 ring-primary/50 glow sm:h-40 sm:w-40" />
+        <img src="/school-logo.jpg" alt="Burka Harbu Special Secondary School logo" className="h-28 w-28 rounded-full ring-2 ring-primary/50 glow sm:h-40 sm:w-40" />
         <h1 className="mt-6 text-2xl font-bold sm:text-3xl md:text-4xl">Burka Harbu <span className="text-accent">Special Secondary School</span></h1>
         <p className="mt-3 text-muted-foreground">Grade 12 Exam Portal</p>
       </div>

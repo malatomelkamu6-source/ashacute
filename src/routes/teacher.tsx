@@ -42,7 +42,7 @@ function Teacher() {
         try { await dash({ data: { passcode: pw, teacherId: tid } }); setAuth({ tid, pw }); setPw(""); }
         catch (e) { setErr(e instanceof Error ? e.message : "Could not sign in."); } finally { setBusy(false); }
       }}>
-        <img src={logo.url} alt="Burka Harbu logo" className="mx-auto h-20 w-20 rounded-full ring-2 ring-primary/40 glow" />
+        <img src="/school-logo.jpg" alt="Burka Harbu logo" className="mx-auto h-20 w-20 rounded-full ring-2 ring-primary/40 glow" />
         <h2 className="text-center font-semibold">Teacher sign in</h2>
         <select className="field" value={stream} onChange={(e) => { setStream(e.target.value); setTid(""); }} required aria-label="Stream">
           <option value="">First, choose your stream</option>

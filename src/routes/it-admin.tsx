@@ -35,7 +35,7 @@ function ITAdmin() {
         catch (e) { setError(e instanceof Error ? e.message : "Could not sign in."); }
         finally { setBusy(false); }
       }}>
-        <img src={logo.url} alt="Burka Harbu logo" className="mx-auto h-20 w-20 rounded-full ring-2 ring-primary/40 glow" />
+        <img src="/school-logo.jpg" alt="Burka Harbu logo" className="mx-auto h-20 w-20 rounded-full ring-2 ring-primary/40 glow" />
         <h2 className="text-center text-xl font-semibold">IT Admin sign in</h2>
         <label className="block text-sm" htmlFor="admin-pin">Admin PIN</label>
         <input id="admin-pin" type="password" autoComplete="current-password" className="field" placeholder="Enter your PIN" value={pin} onChange={(e) => setPin(e.target.value)} required maxLength={200} />
