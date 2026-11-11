@@ -53,3 +53,5 @@
 - [x] Student results refresh by themselves after the Director adds marks for a flagged question
 - [x] Exam Help button sends the student name, ID and class to the Director
 - [x] Paper import keeps formulas/symbols, reading passages and graphs/diagrams/tables; exam screen shows them
+- [x] Telegram bot: name sign-in, My Result (ID + passcode), Profile, Help, status notices; IT Admin bot page with live counters, users, help inbox, announcements and settings
+- [ ] Publish, then press "Reconnect bot" on the published IT Admin page so the bot uses the live site

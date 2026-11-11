@@ -164,11 +164,11 @@ async function startResult(user: BotUser, s: BotSettings) {
   await send(user.chat_id, "Please send your <b>student ID</b> (for example BH-12A-01).", backKeyboard);
 }
 
-async function handleResultId(user: BotUser, s: BotSettings, text: string) {
+async function handleResultId(user: BotUser, _s: BotSettings, text: string) {
   const id = text.trim().toUpperCase().replace(/\s+/g, "");
   if (id !== user.student_code) return send(user.chat_id, "❌ This ID does not match your registration. Please check it and send it again.", backKeyboard);
   await setUser(user.chat_id, { state: "await_result_pin" });
-  await send(user.chat_id, "🔐 Now send your <b>result passcode</b> (4 to 6 numbers). Your message will be deleted for privacy.", backKeyboard);
+  return send(user.chat_id, "🔐 Now send your <b>result passcode</b> (4 to 6 numbers). Your message will be deleted for privacy.", backKeyboard);
 }
 
 async function handleResultPin(user: BotUser, s: BotSettings, text: string, messageId: number) {
@@ -310,7 +310,7 @@ export async function notifyStatusChanges() {
     const prev = ts[LAST[flag]];
     const cur = es[flag];
     if (prev === cur) continue;
-    let q = sb.from("telegram_settings").update({ [LAST[flag]]: cur }).eq("id", 1);
+    let q = sb.from("telegram_settings").update({ [LAST[flag]]: cur } as Partial<BotSettings>).eq("id", 1);
     q = prev === null ? q.is(LAST[flag], null) : q.eq(LAST[flag], prev);
     const { data: claimed } = await q.select("id");
     if (!claimed?.length || !cur || !ts.bot_enabled || prev === null) continue;
