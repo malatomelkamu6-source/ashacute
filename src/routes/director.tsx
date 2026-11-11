@@ -39,7 +39,7 @@ function Director() {
           try { await load({ data: { passcode: input } }); setPass(input); setInput(""); }
           catch (e) { setErr(e instanceof Error ? e.message : "Could not sign in."); } finally { setBusy(false); }
         }}>
-          <img src={logo.url} alt="Burka Harbu logo" className="mx-auto h-20 w-20 rounded-full ring-2 ring-primary/40 glow" />
+          <img src="/school-logo.jpg" alt="Burka Harbu logo" className="mx-auto h-20 w-20 rounded-full ring-2 ring-primary/40 glow" />
           <h2 className="text-center font-semibold">Director sign in</h2>
           <input type="password" autoComplete="current-password" className="field" placeholder="Password" value={input} onChange={(e) => setInput(e.target.value)} required />
           {err && <p role="alert" className="text-xs text-destructive">{err}</p>}

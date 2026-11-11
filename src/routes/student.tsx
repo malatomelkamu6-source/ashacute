@@ -77,7 +77,7 @@ function StudentPage() {
       {gate === "login" && <Login onLogin={signIn} onBack={() => setGate("choose")} />}
       {gate === "register" && (regClosed ? (
         <div className="tile mx-auto max-w-sm space-y-4 text-center">
-          <img src={logo.url} alt="Burka Harbu logo" className="mx-auto h-20 w-20 rounded-full ring-2 ring-primary/40 glow" />
+          <img src="/school-logo.jpg" alt="Burka Harbu logo" className="mx-auto h-20 w-20 rounded-full ring-2 ring-primary/40 glow" />
           <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-border bg-secondary/60"><Lock className="h-6 w-6 text-muted-foreground" /></span>
           <h2 className="text-xl font-semibold">Registration is closed</h2>
           <p className="text-sm text-muted-foreground">New registrations are locked right now. Please contact IT Admin if you need to register.</p>
@@ -116,7 +116,7 @@ function Login({ onLogin, onBack }: { onLogin: (s: PublicStudent) => void; onBac
       try { const r = await login({ data: { name, id } }); r.ok ? onLogin(r.student) : setErr(r.error); }
       catch { setErr("Could not sign in. Check your details."); } finally { setBusy(false); }
     }}>
-      <img src={logo.url} alt="Burka Harbu logo" className="mx-auto h-20 w-20 rounded-full ring-2 ring-primary/40 glow" />
+      <img src="/school-logo.jpg" alt="Burka Harbu logo" className="mx-auto h-20 w-20 rounded-full ring-2 ring-primary/40 glow" />
       <h2 className="font-semibold">Student sign in</h2>
       <input className="field" placeholder="Full name (as registered)" value={name} onChange={(e) => setName(e.target.value)} required />
       <input className="field font-mono uppercase" placeholder="Student ID e.g. BH-12A-4821" value={id} onChange={(e) => setId(e.target.value)} required />
@@ -168,7 +168,7 @@ function Register({ onDone, onBack }: { onDone: (s: PublicStudent) => void; onBa
           catch (e) { setErr(e instanceof Error ? e.message : "Could not check your name."); }
           finally { setBusy(false); }
         }}>
-          <img src={logo.url} alt="Burka Harbu logo" className="mx-auto h-20 w-20 rounded-full ring-2 ring-primary/40 glow" />
+          <img src="/school-logo.jpg" alt="Burka Harbu logo" className="mx-auto h-20 w-20 rounded-full ring-2 ring-primary/40 glow" />
           <h2 className="text-lg font-semibold">Student registration</h2>
           <input className="field" placeholder="Full name as in the school list" value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.target.value })} maxLength={100} required />
           <label className="block text-xs text-muted-foreground">Result passcode (4–6 numbers)
@@ -377,7 +377,7 @@ function Exam({ student, onExit }: { student: PublicStudent; onExit: () => void 
       onCopy={(e) => e.preventDefault()} onCut={(e) => e.preventDefault()} onContextMenu={(e) => e.preventDefault()} onDragStart={(e) => e.preventDefault()}>
       <div className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-3 py-2 sm:gap-4 sm:px-4 sm:py-3">
-          <img src={logo.url} alt="" className="h-9 w-9 rounded-full" />
+          <img src="/school-logo.jpg" alt="" className="h-9 w-9 rounded-full" />
           <div className="text-sm"><div className="font-semibold">{paper.title}</div><div className="text-xs text-muted-foreground">{student.id} · {answeredCount}/{paper.paper.length} answered</div></div>
           <span className={`rounded-full border border-border px-2.5 py-1 font-mono text-sm font-bold lg:hidden ${left < 300 ? "text-destructive" : "text-primary"}`} aria-label="Time left">{fmt(left)}</span>
           <span className={`ml-auto flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${violations ? "border-destructive/50 text-destructive" : "border-accent/40 text-accent"}`}><AlertTriangle className="h-3.5 w-3.5" />{violations}/3 warnings</span>

@@ -38,11 +38,11 @@ export function Shell({ children, title, subtitle, help = false }: { children: R
   const shownRoles = visibleRoles(roles, data?.hiddenStaffRoles);
   return (
     <div className="relative min-h-screen">
-      <img src={logo.url} alt="" aria-hidden className="pointer-events-none fixed left-1/2 top-1/2 -z-0 w-[560px] max-w-[80vw] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.05]" />
+      <img src="/school-logo.jpg" alt="" aria-hidden className="pointer-events-none fixed left-1/2 top-1/2 -z-0 w-[560px] max-w-[80vw] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.05]" />
       <header className="header-premium z-30 backdrop-blur-xl md:sticky md:top-0">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2 sm:px-4 sm:py-3">
           <Link to="/" className="flex min-w-0 items-center gap-3">
-            <span className="logo-ring shrink-0"><img src={logo.url} alt="Burka Harbu logo" className="block h-9 w-9 rounded-full sm:h-11 sm:w-11" /></span>
+            <span className="logo-ring shrink-0"><img src="/school-logo.jpg" alt="Burka Harbu logo" className="block h-9 w-9 rounded-full sm:h-11 sm:w-11" /></span>
             <div className="min-w-0 leading-tight">
               <div className="text-premium truncate font-display text-sm font-bold sm:text-base">Burka Harbu Special Secondary School</div>
               <div className="flex items-center gap-1.5 truncate text-xs text-muted-foreground"><BadgeCheck className="h-3.5 w-3.5 shrink-0 text-accent" />Grade 12 National Exam Platform</div>
