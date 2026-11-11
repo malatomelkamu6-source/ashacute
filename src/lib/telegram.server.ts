@@ -310,7 +310,7 @@ export async function notifyStatusChanges() {
     const prev = ts[LAST[flag]];
     const cur = es[flag];
     if (prev === cur) continue;
-    let q = sb.from("telegram_settings").update({ [LAST[flag]]: cur }).eq("id", 1);
+    let q = sb.from("telegram_settings").update({ [LAST[flag]]: cur } as Partial<BotSettings>).eq("id", 1);
     q = prev === null ? q.is(LAST[flag], null) : q.eq(LAST[flag], prev);
     const { data: claimed } = await q.select("id");
     if (!claimed?.length || !cur || !ts.bot_enabled || prev === null) continue;
