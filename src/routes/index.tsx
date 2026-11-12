@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Crown, Cpu, BookOpen, GraduationCap } from "lucide-react";
-import logo from "@/assets/logo.jpg.asset.json";
 import { HelpLink, visibleRoles } from "@/components/Shell";
 import { usePublicState } from "@/lib/live";
 

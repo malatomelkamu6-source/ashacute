@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Lock, Maximize, Flag, ChevronLeft, ChevronRight, AlertTriangle, Trophy, LogOut, ShieldCheck, UserPlus, LogIn, BadgeCheck, Copy, ClipboardList, BarChart3, WifiOff, KeyRound, LifeBuoy, Sparkles } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import logo from "@/assets/logo.jpg.asset.json";
 import { Shell, Panel, Btn } from "@/components/Shell";
 import { LiveCamera } from "@/components/LiveCamera";
 import { MathText, PassageBox, FigureImage } from "@/components/MathText";

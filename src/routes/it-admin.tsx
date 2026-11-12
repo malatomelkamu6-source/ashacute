@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { KeyRound, LockKeyhole } from "lucide-react";
-import logo from "@/assets/logo.jpg.asset.json";
 import { Shell, Btn } from "@/components/Shell";
 import { RegisteredStudents } from "@/components/RegisteredStudents";
 import { adminDirectory } from "@/lib/students.functions";
