@@ -39,7 +39,6 @@ use the editor.
 - Exam attempts retain personal deadlines; scheduling controls new starts independently, and Director extensions update live deadlines atomically.
 - Submission scoring and attempt/result writes use the service-role-only atomic submission RPC; per-exam marks remain on attempts and subject summaries on round_results.
 - Round and alert removal archives or dismisses records instead of deleting marks; new rounds increment current_round and preserve earlier attempts.
-- Face checks (uncovered face, duplicate face) run at registration through the AI gateway in `src/lib/face.server.ts`.
 - Face reset updates verification and photo fields instead of deleting identities, because exam attempts reference the official student code; registration replaces only unverified rows and exam calls require current verification.
 - Teacher intake uses the shared validated teacher schema and server-side ID allocation; queued banks persist the sending teacher's target stream to enforce stream isolation for shared subjects.
 - Automatic exam transitions use a service-role-only database function, called on reads and by a minute-level job armed only for enabled future schedules, so timing works without viewers and stops after closing.
@@ -55,3 +54,4 @@ use the editor.
 - `selected_student_codes` (NULL = everyone) is the exam-room list; only listed students may start.
 - `hidden_staff_roles` hides staff pages from the home page and menus via `visibleRoles`; staff links render only after the setting loads, and direct links keep working.
 - `apply_exam_schedule` closes when every admitted student finished (`auto_close`, sets `auto_completed`); in Auto its close time only ends new starts and the session stays live while attempts are in progress, so extended or paused students are never cut off.
+- Vercel only proxies to the Lovable-published site (`vercel.json`); Cloud server keys can't leave Lovable.

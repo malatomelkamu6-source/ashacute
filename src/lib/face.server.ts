@@ -12,7 +12,8 @@ async function ask(content: unknown[]): Promise<Record<string, unknown>> {
   if (!res.ok) {
     const body = await res.text();
     console.error(`Face check failed [${res.status}]: ${body}`);
-    if (res.status === 402 || res.status === 429) throw new Error("Face verification is busy. Please try again in a minute.");
+    if (res.status === 402) throw new Error("Face verification is paused because the school's AI credit is used up. Please tell IT Admin.");
+    if (res.status === 429) throw new Error("Face verification is busy. Please try again in a minute.");
     throw new Error("Face verification is unavailable right now. Please try again.");
   }
   const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
