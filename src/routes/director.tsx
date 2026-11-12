@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import * as XLSX from "xlsx";
 import { Power, Megaphone, Timer, Table2, KeyRound, ListChecks, Plus, Radio, UserCheck, AlertTriangle, Layers, Trash2, CalendarDays, Download, Pause, Play, Search, BarChart3, RotateCcw, Trophy, Medal, Award, WifiOff, Wifi, Settings, X, Users, BookOpenCheck, DoorClosed, CheckCircle2, LifeBuoy } from "lucide-react";
-import logo from "@/assets/logo.jpg.asset.json";
 import { Shell, Panel, Toggle, Btn } from "@/components/Shell";
 import { directorDashboard, directorUpdate, directorClock, directorNewRound, directorReadmit, directorChangePassword, directorRemove, directorRemoveBank, directorResetResults, directorStudentTime, directorAwardFlag } from "@/lib/exam.functions";
 import { backOnline } from "@/lib/exam-timing";

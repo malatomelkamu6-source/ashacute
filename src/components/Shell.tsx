@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { Crown, Cpu, BookOpen, GraduationCap, MessageCircle, BadgeCheck } from "lucide-react";
-import logo from "@/assets/logo.jpg.asset.json";
 import { usePublicState } from "@/lib/live";
 import { isPageVisible } from "@/lib/admin-rules";
 

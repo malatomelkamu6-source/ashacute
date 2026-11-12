@@ -6,7 +6,6 @@ import { FileUp, PenSquare, Send, Trash2, Plus, Lock, Save, Flag, KeyRound, LogO
 import { MathText, FigureImage } from "@/components/MathText";
 import { hasMath } from "@/lib/math-text";
 import { PAPER_ACCEPT, MAX_PAPER_BYTES, type ScannedQuestion } from "@/lib/paper";
-import logo from "@/assets/logo.jpg.asset.json";
 import { Shell, Panel, Btn } from "@/components/Shell";
 import { listTeachers, teacherDashboard, teacherSaveBank, teacherRemoveBank, teacherRemoveFlag, teacherChangePassword, teacherMarks, teacherScanPaper, teacherUploadFigure, teacherFigureUrls, type Question } from "@/lib/exam.functions";
 
