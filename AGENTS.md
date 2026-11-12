@@ -55,3 +55,4 @@ use the editor.
 - `selected_student_codes` (NULL = everyone) is the exam-room list; only listed students may start.
 - `hidden_staff_roles` hides staff pages from the home page and menus via `visibleRoles`; staff links render only after the setting loads, and direct links keep working.
 - `apply_exam_schedule` closes when every admitted student finished (`auto_close`, sets `auto_completed`); in Auto its close time only ends new starts and the session stays live while attempts are in progress, so extended or paused students are never cut off.
+- Vercel deployments are a pure proxy (`vercel.json` rewrites to the Lovable-published site) because Lovable Cloud server keys cannot leave Lovable hosting.
